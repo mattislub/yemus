@@ -6,7 +6,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT || 3900;
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
