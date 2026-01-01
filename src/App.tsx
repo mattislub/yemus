@@ -262,14 +262,29 @@ const triggerBrowserDownload = (blob: Blob, filename: string) => {
 const buildEntryPath = (entry: DirectoryEntry, basePath: string | undefined): string => {
   const formattedBase = formatDirectoryPath(basePath ?? '');
   const entryPath = entry.path.trim();
+  const sanitizedEntryPath = entryPath.replace(/^ivr2:/, '').replace(/^\/+/, '');
+
+  if (entryPath.startsWith('ivr2:')) {
+    return entryPath;
+  }
 
   if (entryPath) {
-    return entryPath.startsWith('ivr2:') ? entryPath : formatDirectoryPath(entryPath);
+    if (sanitizedEntryPath.includes('/')) {
+      return `ivr2:/${sanitizedEntryPath}`;
+    }
+
+    if (formattedBase) {
+      const cleanBase = formattedBase.replace(/\/+$/, '');
+      return `${cleanBase}/${sanitizedEntryPath}`;
+    }
+
+    return `ivr2:/${sanitizedEntryPath}`;
   }
 
   if (!formattedBase) return '';
 
-  return formattedBase.endsWith('/') ? `${formattedBase}${entry.name}` : `${formattedBase}/${entry.name}`;
+  const cleanBase = formattedBase.replace(/\/+$/, '');
+  return `${cleanBase}/${entry.name.replace(/^\/+/, '')}`;
 };
 
 function DirectoryResults({
