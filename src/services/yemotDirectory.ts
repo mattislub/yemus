@@ -198,7 +198,15 @@ export async function downloadFile({ token, path }: DownloadFileParams): Promise
 
   const base = normalizeBaseApiUrl(API_BASE);
   const endpoint = `${base}/GetIVR2File`;
-  const url = `${endpoint}?${new URLSearchParams({ token, path: formattedPath }).toString()}`;
+  const requestQuery = { token, path: formattedPath } as const;
+  const url = `${endpoint}?${new URLSearchParams(requestQuery).toString()}`;
+
+  console.info('[Yemot Download] Preparing browser request.', {
+    path: formattedPath,
+    endpoint,
+    requestUrl: url,
+    query: requestQuery,
+  });
 
   let response: Response;
 
@@ -228,7 +236,16 @@ export async function downloadFile({ token, path }: DownloadFileParams): Promise
 
   const blob = await response.blob();
   const fallbackName = formattedPath.split('/').pop() || 'download';
-  const filename = parseFilenameFromContentDisposition(response.headers.get('Content-Disposition'), fallbackName);
+  const contentDisposition = response.headers.get('Content-Disposition');
+  const filename = parseFilenameFromContentDisposition(contentDisposition, fallbackName);
+
+  console.info('[Yemot Download] Received response from API.', {
+    path: formattedPath,
+    requestUrl: url,
+    contentDisposition,
+    filename,
+    contentType: response.headers.get('Content-Type'),
+  });
 
   return { blob, filename };
 }
