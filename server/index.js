@@ -91,31 +91,41 @@ const optionalAuthenticate = () => (req, _res, next) => {
 };
 
 const createSystemToken = async (systemNumber, systemPassword) => {
-  const response = await fetch(LOGIN_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      action: 'login',
-      system: systemNumber,
-      password: systemPassword,
-    }).toString(),
-  });
+  try {
+    const response = await fetch(LOGIN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        action: 'login',
+        system: systemNumber,
+        password: systemPassword,
+      }).toString(),
+    });
 
-  const payload = await response.json().catch(() => null);
-  if (!payload) {
-    throw new Error('התקבלה תגובה לא תקינה מ-Call2all.');
+    const payload = await response.json().catch(() => null);
+    if (!payload || !response.ok || payload.response !== 'OK' || !payload.token) {
+      console.error('Failed to create system token', {
+        systemNumber,
+        status: response.status,
+        statusText: response.statusText,
+        payload,
+      });
+      throw new Error(payload?.message ?? 'לא ניתן היה ליצור טוקן עם פרטי המערכת שסופקו.');
+    }
+
+    return {
+      token: String(payload.token),
+      expires: payload.expires ? String(payload.expires) : null,
+    };
+  } catch (error) {
+    console.error('Unexpected error while creating system token', {
+      systemNumber,
+      error,
+    });
+    throw error;
   }
-
-  if (!response.ok || payload.response !== 'OK' || !payload.token) {
-    throw new Error(payload.message ?? 'לא ניתן היה ליצור טוקן עם פרטי המערכת שסופקו.');
-  }
-
-  return {
-    token: String(payload.token),
-    expires: payload.expires ? String(payload.expires) : null,
-  };
 };
 
 app.use(express.json());
