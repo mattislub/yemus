@@ -1,0 +1,352 @@
+{
+  "benches": [
+    {
+      "id": "bench-1757016851686",
+      "name": "ספסל 1",
+      "color": "#3B82F6",
+      "locked": false,
+      "position": {
+        "x": -243.80708661417322,
+        "y": 22.526246719160106
+      },
+      "seatCount": 4,
+      "temporary": false,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "bench-1757017903573",
+      "name": "ספסל 1 (עותק)",
+      "color": "#3B82F6",
+      "locked": false,
+      "position": {
+        "x": 56.56791338582677,
+        "y": 222.5262467191601
+      },
+      "seatCount": 4,
+      "temporary": false,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "bench-1757017904438",
+      "name": "ספסל 1 (עותק)",
+      "color": "#3B82F6",
+      "locked": false,
+      "position": {
+        "x": 56.25541338582677,
+        "y": 122.52624671916011
+      },
+      "seatCount": 4,
+      "temporary": false,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "bench-1757017925707",
+      "name": "ספסל 1 (עותק)",
+      "color": "#3B82F6",
+      "locked": false,
+      "position": {
+        "x": 336.2554133858268,
+        "y": 21.69291338582675
+      },
+      "seatCount": 4,
+      "temporary": false,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "bench-1757017928345",
+      "name": "ספסל 1 (עותק) (עותק)",
+      "color": "#3B82F6",
+      "locked": false,
+      "position": {
+        "x": 336.5679133858268,
+        "y": 221.69291338582678
+      },
+      "seatCount": 4,
+      "temporary": false,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "bench-1757017928866",
+      "name": "ספסל 1 (עותק) (עותק)",
+      "color": "#3B82F6",
+      "locked": false,
+      "position": {
+        "x": 336.3179133858268,
+        "y": 121.69291338582676
+      },
+      "seatCount": 4,
+      "temporary": false,
+      "orientation": "horizontal"
+    },
+    {
+      "id": "bimah-1757023160418",
+      "name": "בימה",
+      "type": "special",
+      "width": 100,
+      "height": 100,
+      "color": "#654321",
+      "icon": "📖",
+      "position": {
+        "x": 400,
+        "y": 300
+      },
+      "seatCount": 0,
+      "orientation": "horizontal",
+      "locked": false,
+      "temporary": false
+    },
+    {
+      "id": "amud-tfila-1757023165714",
+      "name": "עמוד תפילה",
+      "type": "special",
+      "width": 40,
+      "height": 60,
+      "color": "#2F4F4F",
+      "icon": "🕯️",
+      "position": {
+        "x": 400,
+        "y": 300
+      },
+      "seatCount": 0,
+      "orientation": "horizontal",
+      "locked": false,
+      "temporary": false
+    }
+  ],
+  "seats": [
+    {
+      "id": 1,
+      "userId": "4",
+      "benchId": "bench-1757017925707",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": true
+    },
+    {
+      "id": 2,
+      "userId": "4",
+      "benchId": "bench-1757017925707",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": true
+    },
+    {
+      "id": 3,
+      "userId": "4",
+      "benchId": "bench-1757017925707",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": true
+    },
+    {
+      "id": 4,
+      "benchId": "bench-1757017925707",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 5,
+      "benchId": "bench-1757016851686",
+      "position": {
+        "x": -43.30708661417323,
+        "y": -43.30708661417323
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 6,
+      "benchId": "bench-1757016851686",
+      "position": {
+        "x": -43.30708661417323,
+        "y": -43.30708661417323
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 7,
+      "benchId": "bench-1757016851686",
+      "position": {
+        "x": -43.30708661417323,
+        "y": -43.30708661417323
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 8,
+      "benchId": "bench-1757016851686",
+      "position": {
+        "x": -43.30708661417323,
+        "y": -43.30708661417323
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 9,
+      "benchId": "bench-1757017928866",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 10,
+      "benchId": "bench-1757017928866",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 11,
+      "benchId": "bench-1757017928866",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 12,
+      "benchId": "bench-1757017928866",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 13,
+      "benchId": "bench-1757017904438",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 14,
+      "benchId": "bench-1757017904438",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 15,
+      "benchId": "bench-1757017904438",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 16,
+      "benchId": "bench-1757017904438",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 17,
+      "benchId": "bench-1757017928345",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 18,
+      "benchId": "bench-1757017928345",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 19,
+      "benchId": "bench-1757017928345",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 20,
+      "benchId": "bench-1757017928345",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 21,
+      "benchId": "bench-1757017903573",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 22,
+      "benchId": "bench-1757017903573",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 23,
+      "benchId": "bench-1757017903573",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    },
+    {
+      "id": 24,
+      "benchId": "bench-1757017903573",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "isOccupied": false
+    }
+  ],
+  "mapBounds": {
+    "top": 56.69291338582677,
+    "left": 56.69291338582677,
+    "right": 56.69291338582677,
+    "bottom": 56.69291338582677
+  },
+  "mapOffset": {
+    "x": 349.6159829017784,
+    "y": 121.6030864927608
+  },
+  "gridSettings": {
+    "showGrid": true,
+    "snapToGrid": false,
+    "gridSize": 20
+  }
+}
