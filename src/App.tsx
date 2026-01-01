@@ -1,20 +1,45 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { createUser, listUsers, ManagedUser, Role, updateUser } from './services/adminDirectory';
+import {
+  createUser,
+  listUsers,
+  ManagedUser,
+  Role,
+  signIn,
+  updateUser,
+} from './services/adminDirectory';
 import './App.css';
 
-type ActivePage = 'login' | 'admin';
+type LoginCardProps = {
+  onSuccess: (user: ManagedUser) => void;
+};
 
-function LoginCard() {
+function LoginCard({ onSuccess }: LoginCardProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError('');
+
+    setLoading(true);
+    try {
+      const authenticated = await signIn(username, password);
+      onSuccess(authenticated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'התחברות נכשלה, נסו שוב.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="card">
       <h1 className="title">התחברות</h1>
+      <p className="subtitle" style={{ textAlign: 'center' }}>
+        התחברות רגילה נדרשת לפני גישה לדף המנהל.
+      </p>
       <form className="form" onSubmit={handleSubmit}>
         <label className="field">
           <span>שם משתמש</span>
@@ -36,13 +61,21 @@ function LoginCard() {
             required
           />
         </label>
-        <button type="submit" className="submit-button">התחבר</button>
+        {error && <div className="alert alert-error">{error}</div>}
+        <button type="submit" className="submit-button" disabled={loading}>
+          {loading ? 'מתחבר...' : 'התחבר'}
+        </button>
       </form>
     </div>
   );
 }
 
-function AdminPage() {
+type AdminPageProps = {
+  user: ManagedUser;
+  onLogout: () => void;
+};
+
+function AdminPage({ user, onLogout }: AdminPageProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({ username: '', password: '', role: 'user' as Role });
@@ -135,9 +168,19 @@ function AdminPage() {
           <h1 className="title">דף ניהול מאובטח</h1>
           <p className="subtitle">הוספת משתמשים, הגדרת תפקידים וניהול סיסמאות - הכל נשמר בשרת.</p>
         </div>
-        <button className="refresh-button" type="button" onClick={loadUsers} disabled={loading}>
-          רענן נתונים
-        </button>
+        <div className="admin-actions">
+          <p className="muted">
+            מחובר כ: {user.username} ({user.role === 'manager' ? 'מנהל' : 'משתמש'})
+          </p>
+          <div className="admin-buttons">
+            <button className="refresh-button" type="button" onClick={loadUsers} disabled={loading}>
+              רענן נתונים
+            </button>
+            <button className="refresh-button logout-button" type="button" onClick={onLogout}>
+              התנתק
+            </button>
+          </div>
+        </div>
       </div>
 
       {(error || success) && (
@@ -257,29 +300,30 @@ function AdminPage() {
 }
 
 function App() {
-  const [activePage, setActivePage] = useState<ActivePage>('login');
+  const [authenticatedUser, setAuthenticatedUser] = useState<ManagedUser | null>(null);
+
+  const handleLogout = () => {
+    setAuthenticatedUser(null);
+  };
 
   return (
     <div className="page">
       <div className="layout">
-        <div className="tabs">
-          <button
-            type="button"
-            className={`tab ${activePage === 'login' ? 'active' : ''}`}
-            onClick={() => setActivePage('login')}
-          >
-            התחברות
-          </button>
-          <button
-            type="button"
-            className={`tab ${activePage === 'admin' ? 'active' : ''}`}
-            onClick={() => setActivePage('admin')}
-          >
-            דף מנהל
-          </button>
-        </div>
-
-        {activePage === 'login' ? <LoginCard /> : <AdminPage />}
+        {!authenticatedUser ? (
+          <LoginCard onSuccess={setAuthenticatedUser} />
+        ) : authenticatedUser.role !== 'manager' ? (
+          <div className="card">
+            <h1 className="title">אין הרשאה לדף מנהל</h1>
+            <p className="subtitle">
+              התחברות למשתמש מנהל נדרשת כדי לגשת לדף הניהול. אנא התנתק ונסה עם חשבון מתאים.
+            </p>
+            <button type="button" className="submit-button" onClick={handleLogout}>
+              התנתק
+            </button>
+          </div>
+        ) : (
+          <AdminPage user={authenticatedUser} onLogout={handleLogout} />
+        )}
       </div>
     </div>
   );

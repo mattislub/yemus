@@ -97,3 +97,17 @@ export async function updateUser(id: string, updates: UpdatePayload): Promise<Ma
   record.updatedAt = new Date().toISOString();
   return withoutPassword(record);
 }
+
+export async function signIn(username: string, password: string): Promise<ManagedUser> {
+  await sleep();
+
+  const record = serverState.users.find(
+    (user) => user.username.trim().toLowerCase() === username.trim().toLowerCase(),
+  );
+
+  if (!record || record.password !== password) {
+    throw new Error('שם משתמש או סיסמה שגויים.');
+  }
+
+  return withoutPassword(record);
+}
