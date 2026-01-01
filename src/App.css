@@ -89,7 +89,19 @@
   font-size: 15px;
 }
 
-.field input:focus {
+.field textarea {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 15px;
+  resize: vertical;
+  min-height: 96px;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
   outline: none;
   border-color: #0ea5e9;
   box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
@@ -285,4 +297,23 @@
 
 .muted {
   color: #475569;
+}
+
+.extensions-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 6px 10px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  font-weight: 700;
 }
