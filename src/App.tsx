@@ -1,11 +1,13 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   AuthSession,
+  createSystemToken,
   createUser,
   listUsers,
   ManagedUser,
   Role,
   signIn,
+  SystemTokenResponse,
   updateUser,
 } from './services/adminDirectory';
 import './App.css';
@@ -254,11 +256,22 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [systemToken, setSystemToken] = useState<SystemTokenResponse | null>(null);
+  const [tokenError, setTokenError] = useState('');
+  const [tokenStatus, setTokenStatus] = useState('');
+  const [tokenLoading, setTokenLoading] = useState(false);
 
   const selectedUser = useMemo(
     () => users.find((user) => user.id === selectedUserId) ?? null,
     [selectedUserId, users],
   );
+
+  const resetTokenState = () => {
+    setSystemToken(null);
+    setTokenError('');
+    setTokenStatus('');
+    setTokenLoading(false);
+  };
 
   const applyUserToUpdateForm = (record: ManagedUser) => {
     setUpdateForm({
@@ -277,8 +290,7 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
       const fromServer = await listUsers(session.token);
       setUsers(fromServer);
       if (!selectedUserId && fromServer.length) {
-        setSelectedUserId(fromServer[0].id);
-        applyUserToUpdateForm(fromServer[0]);
+        handleSelectUser(fromServer[0]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בעת טעינת משתמשים מהשרת');
@@ -326,8 +338,7 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
         systemPassword: '',
         extensions: [''],
       });
-      setSelectedUserId(created.id);
-      applyUserToUpdateForm(created);
+      handleSelectUser(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'לא ניתן ליצור משתמש חדש כרגע.');
     }
@@ -336,6 +347,7 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
   const handleSelectUser = (record: ManagedUser) => {
     setSelectedUserId(record.id);
     applyUserToUpdateForm(record);
+    resetTokenState();
   };
 
   const handleOpenUpdateForm = () => {
@@ -383,6 +395,27 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
       applyUserToUpdateForm(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'עדכון משתמש נכשל.');
+    }
+  };
+
+  const handleCreateSystemToken = async () => {
+    if (!selectedUser) {
+      setTokenError('בחר משתמש כדי ליצור טוקן למערכת שלו.');
+      return;
+    }
+
+    setTokenError('');
+    setTokenStatus('');
+    setTokenLoading(true);
+
+    try {
+      const created = await createSystemToken(selectedUser.id, session.token);
+      setSystemToken(created);
+      setTokenStatus('נוצר טוקן חדש למערכת שנבחרה.');
+    } catch (err) {
+      setTokenError(err instanceof Error ? err.message : 'יצירת טוקן נכשלה.');
+    } finally {
+      setTokenLoading(false);
     }
   };
 
@@ -437,6 +470,45 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
           </button>
         </div>
       </div>
+
+      {selectedUser && (
+        <div className="panel">
+          <div className="panel-header">
+            <h2>יצירת טוקן התחברות למערכת</h2>
+            <p>
+              צור טוקן Call2All לפי מספר המערכת והסיסמה ששמורים למשתמש שנבחר. אפשר להעתיק את הטוקן ולהשתמש בו
+              מיידית.
+            </p>
+          </div>
+          <p className="muted">
+            משתמש נבחר: <strong>{selectedUser.username}</strong> • מערכת {selectedUser.systemNumber}
+          </p>
+          {(tokenError || tokenStatus) && (
+            <div className={`alert ${tokenError ? 'alert-error' : 'alert-success'}`}>
+              {tokenError || tokenStatus}
+            </div>
+          )}
+          {systemToken && (
+            <div className="token-box">
+              <span className="token-label">טוקן שהופק</span>
+              <code className="token-value">{systemToken.token}</code>
+              <span className="token-expiry">
+                תפוגה: {systemToken.expires ?? 'לא הוחזרה על ידי השירות החיצוני'}
+              </span>
+            </div>
+          )}
+          <div className="admin-buttons">
+            <button
+              type="button"
+              className="refresh-button primary-action"
+              onClick={handleCreateSystemToken}
+              disabled={tokenLoading}
+            >
+              {tokenLoading ? 'יוצר טוקן...' : 'צור טוקן למערכת זו'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="panel panel-wide">
         <div className="panel-header">
