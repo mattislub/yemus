@@ -87,6 +87,12 @@
   align-items: flex-end;
 }
 
+.summary-helper {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .card {
   background: #fff;
   border-radius: 20px;
@@ -176,6 +182,12 @@
   color: #0f172a;
   border-color: #0ea5e9;
   background: #e0f2fe;
+}
+
+.pill.mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .form-card {
@@ -350,6 +362,7 @@ button:not(:disabled):hover {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .branch-grid {
@@ -527,6 +540,29 @@ button:not(:disabled):hover {
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
   margin-top: 10px;
+}
+
+.checkbox-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.checkbox-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+}
+
+.toggle-label {
+  font-weight: 800;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 @media (max-width: 900px) {

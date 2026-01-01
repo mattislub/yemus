@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   createUser,
   fetchUsers,
@@ -75,13 +75,14 @@ function App() {
   });
   const [ivrUpdateStatus, setIvrUpdateStatus] = useState<Status>('idle');
   const [ivrUpdateMessage, setIvrUpdateMessage] = useState<string | null>(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const [branchConfig, setBranchConfig] = useState({
     systemNumber: '0771234567',
     password: 'AdminIvrPass',
     branchPath: '1/2',
     baseUrl: ''
   });
-  const [branchItems, setBranchItems] = useState<BranchItem[]>(SAMPLE_ITEMS);
+  const [branchItems, setBranchItems] = useState<BranchItem[]>([]);
   const [branchStatus, setBranchStatus] = useState<Status>('idle');
   const [branchMessage, setBranchMessage] = useState<string | null>(null);
 
@@ -97,12 +98,18 @@ function App() {
     }
   }, [users, ivrUpdateForm.userId]);
 
-  useEffect(() => {
-    loadBranch({ silent: true });
-  }, []);
-
   const adminCount = useMemo(() => users.filter((user) => user.role === 'admin').length, [users]);
   const memberCount = useMemo(() => users.filter((user) => user.role === 'user').length, [users]);
+  const branchFileCount = useMemo(
+    () => branchItems.filter((item) => item.type === 'file').length,
+    [branchItems]
+  );
+  const branchFolderCount = useMemo(
+    () => branchItems.filter((item) => item.type === 'folder').length,
+    [branchItems]
+  );
+  const effectiveBaseUrl = branchConfig.baseUrl.trim() || 'https://www.call2all.co.il/ym/api';
+  const dynamicModeLabel = autoRefresh ? 'דינמי (טעינה אוטומטית)' : 'ידני (טעינה לפי בקשה)';
 
   const handleChange = (key: keyof LoginRequest, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -125,7 +132,8 @@ function App() {
     return `${mins}:${secs.toString().padStart(2, '0')} דק׳`;
   };
 
-  const loadBranch = async (options?: { silent?: boolean }) => {
+  const loadBranch = useCallback(async (options?: { silent?: boolean; signal?: AbortSignal; allowSampleFallback?: boolean }) => {
+    const { silent = false, signal, allowSampleFallback = true } = options ?? {};
     if (!branchConfig.systemNumber || !branchConfig.password) {
       setBranchStatus('error');
       setBranchMessage('מנהל המערכת צריך להגדיר מספר מערכת וסיסמה לפני הצגת הקבצים.');
@@ -135,35 +143,110 @@ function App() {
     const branchPath = branchConfig.branchPath.trim() || '/';
     const baseUrl = branchConfig.baseUrl.trim() || undefined;
 
-    if (!options?.silent) {
-      setBranchStatus('loading');
+    setBranchStatus('loading');
+    if (!silent) {
+      setBranchMessage(null);
     }
-    setBranchMessage(null);
 
     try {
       const result = await fetchBranchContents({
         systemNumber: branchConfig.systemNumber,
         password: branchConfig.password,
         branchPath,
-        baseUrl
+        baseUrl,
+        signal
       });
 
-      const items = result.items.length ? result.items : SAMPLE_ITEMS;
+      const items = result.items.length ? result.items : allowSampleFallback ? SAMPLE_ITEMS : [];
       setBranchItems(items);
       setBranchStatus('success');
       setBranchMessage(
         result.items.length
           ? `נמצאו ${result.items.length} פריטים בשלוחה ${branchPath}.`
-          : 'לא נמצאו קבצים אמיתיים, מוצגים פריטי דמו.'
+          : allowSampleFallback
+            ? 'לא נמצאו קבצים אמיתיים, מוצגים פריטי דמו.'
+            : 'לא נמצאו קבצים אמיתיים עבור השלוחה הזו.'
       );
     } catch (error) {
       setBranchStatus('error');
       setBranchMessage((error as Error).message);
-      if (!branchItems.length) {
+      if (allowSampleFallback && !branchItems.length) {
         setBranchItems(SAMPLE_ITEMS);
       }
     }
+  }, [branchConfig.baseUrl, branchConfig.branchPath, branchConfig.password, branchConfig.systemNumber, branchItems.length]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      loadBranch({ silent: true, signal: controller.signal, allowSampleFallback: false });
+    }, 400);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeoutId);
+    };
+  }, [
+    autoRefresh,
+    branchConfig.baseUrl,
+    branchConfig.branchPath,
+    branchConfig.password,
+    branchConfig.systemNumber,
+    loadBranch
+  ]);
+
+  useEffect(() => {
+    if (!autoRefresh) {
+      loadBranch({ silent: true });
+    }
+  }, [autoRefresh, loadBranch]);
+
+  const loadDemoData = () => {
+    setBranchItems(SAMPLE_ITEMS);
+    setBranchStatus('success');
+    setBranchMessage('נטען נתוני דמו ללא פנייה ל-API.');
   };
+
+  const summaryItems = useMemo(
+    () => [
+      {
+        key: 'admins',
+        label: 'מנהלים',
+        value: adminCount,
+        helper: 'יכולים להגדיר שלוחות וסיסמאות.'
+      },
+      {
+        key: 'members',
+        label: 'משתמשים',
+        value: memberCount,
+        helper: 'רק צופים ומורידים קבצים.'
+      },
+      {
+        key: 'files',
+        label: 'קבצים מוצגים',
+        value: branchItems.length,
+        helper: `${branchFileCount} קבצים • ${branchFolderCount} תיקיות`
+      },
+      {
+        key: 'mode',
+        label: 'מצב טעינה',
+        value: autoRefresh ? 'דינמי' : 'ידני',
+        helper: autoRefresh ? 'נטען בכל שינוי אוטומטית' : 'לחצו לרענון ידני',
+        action: (
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => loadBranch()}
+            disabled={branchStatus === 'loading'}
+          >
+            {branchStatus === 'loading' ? 'טוען...' : 'רענון קבצים'}
+          </button>
+        )
+      }
+    ],
+    [adminCount, autoRefresh, branchFileCount, branchFolderCount, branchItems.length, branchStatus, loadBranch, memberCount]
+  );
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -448,8 +531,12 @@ function App() {
           </p>
         </div>
         <div className="header-actions">
+          <span className={`pill mode ${autoRefresh ? 'strong' : ''}`}>{dynamicModeLabel}</span>
           <button className="ghost" type="button" onClick={() => loadBranch()} disabled={branchStatus === 'loading'}>
             {branchStatus === 'loading' ? 'טוען קבצים...' : 'רענון רשימת קבצים'}
+          </button>
+          <button className="ghost" type="button" onClick={loadDemoData} disabled={branchStatus === 'loading'}>
+            טעינת נתוני דמו
           </button>
         </div>
       </div>
@@ -469,8 +556,12 @@ function App() {
             <span className="meta-value">{branchConfig.branchPath || '/'}</span>
           </div>
           <div className="meta-row">
+            <span className="meta-label">סיכום פריטים</span>
+            <span className="meta-value">{branchFileCount} קבצים · {branchFolderCount} תיקיות</span>
+          </div>
+          <div className="meta-row">
             <span className="meta-label">כתובת API</span>
-            <span className="meta-value">{branchConfig.baseUrl.trim() || 'ברירת מחדל (call2all)'}</span>
+            <span className="meta-value">{effectiveBaseUrl}</span>
           </div>
         </div>
         <div className="info-card">
@@ -482,6 +573,8 @@ function App() {
             <li>הורדת קובץ בודד בקישור ישיר.</li>
             <li>סימון תיקיות ותת שלוחות לצפייה בלבד.</li>
             <li>הודעות סטטוס ברורות בעברית.</li>
+            <li>מצב טעינה {autoRefresh ? 'דינמי – מתעדכן אוטומטית' : 'ידני – רענון לפי דרישה'}.</li>
+            <li>טעינת נתוני דמו ללא פנייה לשרת בעת צורך.</li>
           </ul>
         </div>
       </div>
@@ -499,6 +592,21 @@ function App() {
             <p className="eyebrow">דף מנהל</p>
             <h2>הגדרת שלוחה ומקור הורדות</h2>
             <p className="muted">מנהל המערכת מגדיר מספר מערכת, סיסמה ושלוחה שממנה המשתמשים יראו קבצים.</p>
+          </div>
+
+          <div className="toggle-row">
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(event) => setAutoRefresh(event.target.checked)}
+              />
+              <div>
+                <div className="toggle-label">טעינה דינמית</div>
+                <div className="muted small">מתעדכן אוטומטית אחרי כל שינוי בפרטים.</div>
+              </div>
+            </label>
+            <span className={`pill mode ${autoRefresh ? 'strong' : ''}`}>{dynamicModeLabel}</span>
           </div>
 
           <form className="form-grid" onSubmit={(event) => { event.preventDefault(); loadBranch(); }}>
@@ -910,23 +1018,14 @@ function App() {
       </header>
 
       <div className="summary-ribbon">
-        <div className="summary-item">
-          <span className="muted small">מנהלים</span>
-          <strong>{adminCount}</strong>
-        </div>
-        <div className="summary-item">
-          <span className="muted small">משתמשים</span>
-          <strong>{memberCount}</strong>
-        </div>
-        <div className="summary-item">
-          <span className="muted small">קבצים מוצגים</span>
-          <strong>{branchItems.length}</strong>
-        </div>
-        <div className="summary-item action">
-          <button type="button" className="ghost" onClick={() => loadBranch()} disabled={branchStatus === 'loading'}>
-            {branchStatus === 'loading' ? 'טוען...' : 'רענון קבצים'}
-          </button>
-        </div>
+        {summaryItems.map((item) => (
+          <div key={item.key} className={`summary-item ${item.action ? 'action' : ''}`}>
+            <span className="muted small">{item.label}</span>
+            <strong>{item.value}</strong>
+            {item.helper && <span className="summary-helper">{item.helper}</span>}
+            {item.action}
+          </div>
+        ))}
       </div>
 
       {activePage === 'home' && renderHome()}
