@@ -1,313 +1,198 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { BranchItem, SAMPLE_ITEMS, fetchBranchContents } from './api/ivr.ts';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { fetchUsers, login, type LoginRequest, type PublicUser } from './api/auth.ts';
 import './App.css';
 
-type Status = 'idle' | 'loading' | 'ready' | 'error';
-
-const formatBytes = (value?: number) => {
-  if (!value || Number.isNaN(value)) return '—';
-  if (value < 1024) return `${value} B`;
-  const units = ['KB', 'MB', 'GB'];
-  const exponent = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
-  const size = value / 1024 ** (exponent + 1);
-  return `${size.toFixed(1)} ${units[exponent]}`;
-};
-
-const formatDuration = (value?: number) => {
-  if (!value && value !== 0) return '';
-  const minutes = Math.floor(value / 60);
-  const seconds = value % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-};
-
-const defaultBaseUrl = import.meta.env.VITE_IVR_BASE_URL ?? 'https://www.call2all.co.il/ym/api';
+type Status = 'idle' | 'loading' | 'success' | 'error';
 
 function App() {
-  const [form, setForm] = useState({
-    systemNumber: '',
-    password: '',
-    branchPath: '1/2',
-    baseUrl: defaultBaseUrl
+  const [form, setForm] = useState<LoginRequest>({
+    role: 'admin',
+    name: '',
+    email: '',
+    password: ''
   });
-  const [rememberPassword, setRememberPassword] = useState(false);
-  const [items, setItems] = useState<BranchItem[]>([]);
-  const [rawResponse, setRawResponse] = useState<unknown>(null);
+  const [users, setUsers] = useState<PublicUser[]>([]);
   const [status, setStatus] = useState<Status>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [downloadingAll, setDownloadingAll] = useState(false);
-  const controllerRef = useRef<AbortController | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem('ivr-dashboard');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setForm((prev) => ({
-          ...prev,
-          systemNumber: parsed.systemNumber ?? prev.systemNumber,
-          branchPath: parsed.branchPath ?? prev.branchPath,
-          baseUrl: parsed.baseUrl ?? prev.baseUrl,
-          password: parsed.rememberPassword ? parsed.password ?? '' : ''
-        }));
-        setRememberPassword(Boolean(parsed.rememberPassword));
-      } catch (err) {
-        console.warn('Unable to parse saved settings', err);
-      }
-    }
+    fetchUsers()
+      .then(setUsers)
+      .catch(() => setUsers([]));
   }, []);
 
-  useEffect(() => {
-    const payload: Record<string, unknown> = {
-      systemNumber: form.systemNumber,
-      branchPath: form.branchPath,
-      baseUrl: form.baseUrl,
-      rememberPassword
-    };
+  const adminCount = useMemo(() => users.filter((user) => user.role === 'admin').length, [users]);
+  const memberCount = useMemo(() => users.filter((user) => user.role === 'user').length, [users]);
 
-    if (rememberPassword && form.password) {
-      payload.password = form.password;
-    }
-
-    localStorage.setItem('ivr-dashboard', JSON.stringify(payload));
-  }, [form.systemNumber, form.branchPath, form.baseUrl, form.password, rememberPassword]);
-
-  const fileCount = useMemo(() => items.filter((item) => item.type === 'file').length, [items]);
-  const folderCount = useMemo(() => items.filter((item) => item.type === 'folder').length, [items]);
-
-  const handleChange = (key: keyof typeof form, value: string) => {
+  const handleChange = (key: keyof LoginRequest, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleFetch = async () => {
-    setStatus('loading');
-    setError(null);
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setMessage(null);
 
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
+    if (!form.email || !form.password) {
+      setStatus('error');
+      setMessage('יש למלא אימייל וסיסמה כדי להמשיך.');
+      return;
+    }
+
+    setStatus('loading');
 
     try {
-      const { items: responseItems, raw } = await fetchBranchContents({
-        ...form,
-        signal: controller.signal
-      });
-      setItems(responseItems);
-      setRawResponse(raw);
-      setStatus('ready');
+      const { notice } = await login(form);
+      const refreshedUsers = await fetchUsers();
+      setUsers(refreshedUsers);
+      setStatus('success');
+      setMessage(notice);
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
       setStatus('error');
-      setError((err as Error).message);
+      setMessage((err as Error).message);
     }
-  };
-
-  const loadSample = () => {
-    controllerRef.current?.abort();
-    setItems(SAMPLE_ITEMS);
-    setRawResponse({ demo: true, items: SAMPLE_ITEMS });
-    setStatus('ready');
-    setError(null);
-  };
-
-  const handleAbort = () => {
-    controllerRef.current?.abort();
-    setStatus('idle');
-  };
-
-  const downloadItem = async (item: BranchItem) => {
-    if (!item.downloadUrl) {
-      throw new Error('לא נמצאה כתובת להורדה עבור הפריט הזה.');
-    }
-
-    const response = await fetch(item.downloadUrl);
-    if (!response.ok) {
-      throw new Error(`הורדה נכשלה (${response.status}).`);
-    }
-
-    const blob = await response.blob();
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    const fallbackName = item.path?.split('/')?.pop() ?? 'ivr-file';
-    link.download = item.name || fallbackName;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(link.href);
-  };
-
-  const downloadAll = async () => {
-    setDownloadingAll(true);
-    setError(null);
-    const files = items.filter((item) => item.type === 'file');
-
-    for (const file of files) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await downloadItem(file);
-      } catch (err) {
-        setError((err as Error).message);
-        break;
-      }
-    }
-
-    setDownloadingAll(false);
   };
 
   return (
     <div className="app-shell">
-      <header className="header">
+      <header className="page-header">
         <div>
-          <h1>ניהול IVR - ימות המשיח</h1>
-          <p>שליפה מהירה של שלוחות (כברירת מחדל 1/2), עם ספירת קבצים ואפשרויות הורדה.</p>
+          <p className="eyebrow">ברוכים הבאים למערכת ימות המשיח</p>
+          <h1>דף הבית הוא מסך התחברות מאובטח</h1>
+          <p className="lede">
+            התחברות מהירה עם שני סוגי משתמשים: מנהל ראשי, ומשתמשים רגילים. כל פרטי הגישה נשמרים בשרת ומסונכרנים
+            בין כל הנכנסים.
+          </p>
         </div>
-        <span className="badge">⚡️ Vite + React</span>
+        <div className="role-cards">
+          <div className="role-card">
+            <span className="role-label admin">מנהל</span>
+            <p>ניהול משתמשים, צפייה בתיעוד התחברויות וגישה מלאה לכל המידע.</p>
+          </div>
+          <div className="role-card">
+            <span className="role-label user">משתמש</span>
+            <p>גישה לשירותי המערכת והעדפת חוויית שימוש, ללא הרשאות ניהול.</p>
+          </div>
+        </div>
       </header>
 
-      <div className="form-grid">
-        <div className="form-field">
-          <label htmlFor="system">מספר מערכת (חובה)</label>
-          <input
-            id="system"
-            placeholder="לדוגמה: 12345"
-            value={form.systemNumber}
-            onChange={(e) => handleChange('systemNumber', e.target.value)}
-          />
-        </div>
-        <div className="form-field">
-          <label htmlFor="password">סיסמה (חובה)</label>
-          <input
-            id="password"
-            type="password"
-            placeholder="••••••"
-            value={form.password}
-            onChange={(e) => handleChange('password', e.target.value)}
-          />
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+      <section className="grid">
+        <form className="card form-card" onSubmit={handleSubmit}>
+          <div className="card-header">
+            <h2>התחברות / יצירת משתמש</h2>
+            <p className="muted">בחרו תפקיד, מלאו פרטים – והמערכת תשמור אותם בשרת.</p>
+          </div>
+
+          <div className="segmented-control">
+            {(['admin', 'user'] as const).map((role) => (
+              <button
+                key={role}
+                type="button"
+                className={`segment ${form.role === role ? 'active' : ''}`}
+                onClick={() => handleChange('role', role)}
+              >
+                {role === 'admin' ? 'מנהל' : 'משתמש'}
+              </button>
+            ))}
+          </div>
+
+          <label className="input-group">
+            <span>שם מלא</span>
             <input
-              type="checkbox"
-              checked={rememberPassword}
-              onChange={(e) => setRememberPassword(e.target.checked)}
+              placeholder="לדוגמה: ישראל ישראלי"
+              value={form.name}
+              onChange={(e) => handleChange('name', e.target.value)}
             />
-            זכור סיסמה מקומית (נשמר רק בדפדפן שלך)
           </label>
-        </div>
-        <div className="form-field">
-          <label htmlFor="branch">שלוחה לבדיקה</label>
-          <input
-            id="branch"
-            value={form.branchPath}
-            onChange={(e) => handleChange('branchPath', e.target.value)}
-          />
-          <small className="helper">ברירת מחדל: 1/2</small>
-        </div>
-        <div className="form-field">
-          <label htmlFor="base">כתובת API</label>
-          <input
-            id="base"
-            value={form.baseUrl}
-            onChange={(e) => handleChange('baseUrl', e.target.value)}
-          />
-          <small className="helper">ניתן להגדיר גם בקובץ ‎.env (VITE_IVR_BASE_URL)</small>
-        </div>
-      </div>
 
-      <div className="actions">
-        <button className="primary" onClick={handleFetch} disabled={status === 'loading'}>
-          בדיקת שלוחה
-        </button>
-        <button className="secondary" onClick={loadSample} disabled={status === 'loading'}>
-          טעינת נתוני דמו
-        </button>
-        <button className="secondary" onClick={handleAbort} disabled={status !== 'loading'}>
-          עצירת בקשה
-        </button>
-      </div>
+          <label className="input-group">
+            <span>אימייל</span>
+            <input
+              type="email"
+              placeholder="name@company.com"
+              value={form.email}
+              onChange={(e) => handleChange('email', e.target.value)}
+              required
+            />
+          </label>
 
-      {status === 'loading' && <div className="status-bar">מבצע שאילתא... (ייתכן שיקח מספר שניות)</div>}
-      {status === 'ready' && !error && (
-        <div className="status-bar success">
-          🎉 נמצאו {items.length} פריטים ({fileCount} קבצים, {folderCount} תיקיות)
-        </div>
-      )}
-      {status === 'error' && error && <div className="status-bar error">⚠️ {error}</div>}
+          <label className="input-group">
+            <span>סיסמה</span>
+            <input
+              type="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={(e) => handleChange('password', e.target.value)}
+              required
+            />
+          </label>
 
-      <div className="cards">
-        <div className="card">
-          <h3>כמות קבצים</h3>
-          <div className="pill">{fileCount} קבצים בשלוחה</div>
-          <small>הכוללים את שלוחה {form.branchPath}</small>
-        </div>
-        <div className="card">
-          <h3>שלוחה פעילה</h3>
-          <div className="pill">{form.branchPath || '1/2'}</div>
-          <small>ניתן לעדכן לשלוחה אחרת</small>
-        </div>
-        <div className="card">
-          <h3>API</h3>
-          <div className="chip">{form.baseUrl}</div>
-          <small>מספר מערכת וסיסמה מוזנים בשדות למעלה</small>
-        </div>
-      </div>
+          <div className="helper">
+            לחיבור ראשוני אפשר להשתמש בפרטי הדמו:
+            <br />
+            <strong>מנהל:</strong> admin@yemot.local / Admin@123
+            <br />
+            <strong>משתמש:</strong> user@yemot.local / User@123
+          </div>
 
-      <div className="actions" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="download-grid">
-          <button
-            className="primary"
-            onClick={downloadAll}
-            disabled={downloadingAll || fileCount === 0}
-            title={fileCount === 0 ? 'אין קבצים להוריד' : 'הורד את כל הקבצים ברצף'}
-          >
-            הורדת כל הקבצים
-          </button>
-          <span className="helper">או הורידו אחד-אחד מטבלת הפריטים</span>
-        </div>
-      </div>
+          <div className="form-actions">
+            <button className="primary" type="submit" disabled={status === 'loading'}>
+              {status === 'loading' ? 'שומר לשרת...' : 'התחברו עכשיו'}
+            </button>
+            <button
+              className="ghost"
+              type="button"
+              onClick={() => setForm({ role: 'admin', name: '', email: '', password: '' })}
+              disabled={status === 'loading'}
+            >
+              איפוס טופס
+            </button>
+          </div>
 
-      <div className="item-list">
-        <div className="item-row header">
-          <div>שם הפריט</div>
-          <div>סוג</div>
-          <div>גודל / אורך</div>
-          <div>פעולות</div>
-        </div>
-        {items.map((item) => (
-          <div key={item.id} className="item-row">
-            <div className="item-name">
-              {item.type === 'folder' ? '📁' : '🎵'} {item.name}
+          {status === 'success' && message && <div className="status success">✅ {message}</div>}
+          {status === 'error' && message && <div className="status error">⚠️ {message}</div>}
+        </form>
+
+        <div className="card server-card">
+          <div className="card-header">
+            <h2>מעקב שרת</h2>
+            <p className="muted">סיכום מהיר של המידע ששמור על השרת אחרי כל התחברות.</p>
+          </div>
+          <div className="stat-grid">
+            <div className="stat">
+              <span className="stat-label">מנהלים</span>
+              <span className="stat-value">{adminCount}</span>
             </div>
-            <div>
-              <span className="chip">{item.type === 'folder' ? 'תיקיה' : 'קובץ'}</span>
+            <div className="stat">
+              <span className="stat-label">משתמשים</span>
+              <span className="stat-value">{memberCount}</span>
             </div>
-            <div>
-              <div>{formatBytes(item.size)}</div>
-              {item.lengthSeconds !== undefined && <small>{formatDuration(item.lengthSeconds)} דק׳</small>}
-            </div>
-            <div className="download-grid">
-              {item.downloadUrl ? (
-                <button className="secondary" onClick={() => downloadItem(item)} disabled={item.type === 'folder'}>
-                  הורדה
-                </button>
-              ) : (
-                <small className="helper">אין URL להורדה</small>
-              )}
-              {item.path && <span className="chip">{item.path}</span>}
+            <div className="stat">
+              <span className="stat-label">סה״כ במערכת</span>
+              <span className="stat-value">{users.length}</span>
             </div>
           </div>
-        ))}
-        {items.length === 0 && <div className="item-row">לא נטענו פריטים עדיין. התחילו בלחיצה על "בדיקת שלוחה".</div>}
-      </div>
 
-      {rawResponse != null ? (
-        <div>
-          <h3>תשובת API (גולמית)</h3>
-          <pre className="raw-response">{JSON.stringify(rawResponse, null, 2)}</pre>
+          <div className="user-list">
+            {users.map((user) => (
+              <div key={user.id} className="user-row">
+                <div>
+                  <div className="user-name">
+                    {user.name || 'ללא שם'} <span className={`role-chip ${user.role}`}>{user.role === 'admin' ? 'מנהל' : 'משתמש'}</span>
+                  </div>
+                  <div className="muted small">{user.email}</div>
+                </div>
+                <div className="muted small">
+                  התחברות אחרונה:
+                  <br />
+                  {new Date(user.lastLogin).toLocaleString('he-IL')}
+                </div>
+              </div>
+            ))}
+
+            {users.length === 0 && <div className="empty">עדיין לא נשמרו משתמשים בשרת.</div>}
+          </div>
         </div>
-      ) : null}
-
-      <p className="helper">
-        טיפ: אם אתם נתקלים בחסימות CORS, הגדירו פרוקסי ב-vite.config או בצעו את הקריאה דרך שרת ביניים.
-        שדות "מספר מערכת" ו"סיסמה" נמצאים בראש הדף כדי שיהיה קל להדביק אותם בכל סשן.
-      </p>
+      </section>
     </div>
   );
 }
