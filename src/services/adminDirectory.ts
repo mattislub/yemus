@@ -35,7 +35,23 @@ const API_BASE = '/api';
 
 const parseJson = async (response: Response) => {
   const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  if (!text) {
+    return null;
+  }
+
+  const contentType = response.headers.get('Content-Type');
+  const isJson = contentType?.includes('application/json');
+
+  if (!isJson) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.warn('Failed to parse JSON response', error);
+    return null;
+  }
 };
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
