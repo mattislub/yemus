@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const USERS_PATH = path.join(DATA_DIR, 'users.json');
-const LOGIN_ENDPOINT = 'https://www.call2all.co.il/ym/api';
+const LOGIN_ENDPOINT = 'https://www.call2all.co.il/ym/api/Login';
 
 const hashPassword = (password) => bcrypt.hash(password, 10);
 
@@ -97,16 +97,12 @@ const canAccessUserResource = (auth, userId) => {
 
 const createSystemToken = async (systemNumber, systemPassword) => {
   try {
-    const response = await fetch(LOGIN_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        action: 'login',
-        system: systemNumber,
-        password: systemPassword,
-      }).toString(),
+    const url = new URL(LOGIN_ENDPOINT);
+    url.searchParams.set('username', systemNumber);
+    url.searchParams.set('password', systemPassword);
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
     });
 
     const payload = await response.json().catch(() => null);
