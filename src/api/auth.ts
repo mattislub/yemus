@@ -13,6 +13,9 @@ export type PublicUser = {
   email: string;
   role: Role;
   lastLogin: string;
+  phoneNumber?: string;
+  ivrSystemNumber?: string;
+  ivrPassword?: string;
 };
 
 export type AdminPasswordChangeRequest = {
@@ -72,7 +75,10 @@ const toPublicUser = (user: StoredUser): PublicUser => ({
   name: user.name,
   email: user.email,
   role: user.role,
-  lastLogin: user.lastLogin
+  lastLogin: user.lastLogin,
+  phoneNumber: user.phoneNumber,
+  ivrSystemNumber: user.ivrSystemNumber,
+  ivrPassword: user.ivrPassword
 });
 
 export const fetchUsers = async (): Promise<PublicUser[]> => {
