@@ -11,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const USERS_PATH = path.join(DATA_DIR, 'users.json');
-const LOGIN_ENDPOINT = 'https://www.call2all.co.il/yemotapi';
+const LOGIN_ENDPOINT = 'https://www.call2all.co.il/ym/api';
 
 const hashPassword = (password) => bcrypt.hash(password, 10);
 

@@ -389,7 +389,7 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
         <div className="form-actions">
           <div className="muted">
             <p className="helper-text">
-              אפשר להדביק כאן את הטוקן שנוצר בחלק העליון. הבקשה נשלחת אל https://www.call2all.co.il/yemotapi עם הפעולה{' '}
+              אפשר להדביק כאן את הטוקן שנוצר בחלק העליון. הבקשה נשלחת אל https://www.call2all.co.il/ym/api עם הפעולה{' '}
               <code>get_dir_info</code>.
             </p>
             <p className="helper-text">
