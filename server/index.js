@@ -106,7 +106,8 @@ const createSystemToken = async (systemNumber, systemPassword) => {
     });
 
     const payload = await response.json().catch(() => null);
-    if (!payload || !response.ok || payload.response !== 'OK' || !payload.token) {
+    const responseOk = payload?.response === 'OK' || payload?.responseStatus === 'OK';
+    if (!payload || !response.ok || !responseOk || !payload.token) {
       console.error('Failed to create system token', {
         systemNumber,
         status: response.status,
