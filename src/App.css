@@ -1,25 +1,26 @@
 .app-shell {
-  max-width: 1100px;
-  margin: 32px auto 48px;
+  max-width: 1180px;
+  margin: 36px auto 48px;
   padding: 32px;
   border-radius: 28px;
-  background: #ffffffd6;
+  background: #ffffffd9;
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
   border: 1px solid #e2e8f0;
   backdrop-filter: blur(6px);
   direction: rtl;
 }
 
-.page-header {
+.top-header {
   display: flex;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
 
-.page-header h1 {
+.top-header h1 {
   margin: 4px 0;
-  font-size: 30px;
+  font-size: 32px;
 }
 
 .eyebrow {
@@ -32,76 +33,58 @@
 .lede {
   margin: 8px 0 0;
   color: #475569;
-  max-width: 640px;
+  max-width: 660px;
 }
 
-.role-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  min-width: 280px;
-}
-
-.role-card {
-  padding: 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f8fafc, #eef2ff);
-  color: #0f172a;
-}
-
-.role-label {
+.nav-tabs {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
 }
 
-.role-label.admin {
-  background: #0ea5e9;
+.nav-tab {
+  border: none;
+  background: transparent;
+  padding: 12px 16px;
+  font-weight: 800;
+  color: #0f172a;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.nav-tab.active {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
   color: #fff;
 }
 
-.role-label.user {
-  background: #e0f2fe;
+.nav-tab:not(.active):hover {
+  background: #e2e8f0;
+}
+
+.summary-ribbon {
+  margin-top: 18px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: linear-gradient(120deg, #f8fafc, #eef2ff);
+  border: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 700;
   color: #0f172a;
 }
 
-.grid {
-  margin-top: 28px;
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 18px;
-}
-
-.download-layout {
-  margin-top: 20px;
-  display: grid;
-  grid-template-columns: minmax(320px, 1.3fr) minmax(280px, 0.7fr);
-  gap: 16px;
-}
-
-.download-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.config-card {
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.admin-grid {
-  margin-top: 24px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+.summary-item.action {
+  align-items: flex-end;
 }
 
 .card {
@@ -124,6 +107,77 @@
   font-size: 14px;
 }
 
+.page-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 18px;
+}
+
+.hero-card {
+  background: radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.14), transparent 35%),
+    radial-gradient(circle at 90% 10%, rgba(99, 102, 241, 0.12), transparent 25%),
+    #fff;
+}
+
+.login-card {
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #1e293b;
+}
+
+.login-card .muted {
+  color: #cbd5e1;
+}
+
+.highlight-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.stat-label {
+  display: block;
+  color: #475569;
+  font-size: 14px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pill {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.pill.strong {
+  font-weight: 800;
+  color: #0f172a;
+  border-color: #0ea5e9;
+  background: #e0f2fe;
+}
+
 .form-card {
   display: flex;
   flex-direction: column;
@@ -141,7 +195,7 @@
   flex-direction: column;
   gap: 6px;
   font-weight: 600;
-  color: #0f172a;
+  color: inherit;
 }
 
 .input-group input {
@@ -162,12 +216,7 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.input-group input:focus {
-  outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
-}
-
+.input-group input:focus,
 .select-input:focus {
   outline: none;
   border-color: #0ea5e9;
@@ -183,17 +232,13 @@
   overflow: hidden;
 }
 
-.view-toggle {
-  margin-top: 16px;
-}
-
 .segment {
   border: none;
   background: transparent;
   padding: 10px;
   cursor: pointer;
   font-weight: 700;
-  color: #0f172a;
+  color: inherit;
 }
 
 .segment.active {
@@ -207,7 +252,7 @@
 
 .helper {
   margin-top: 6px;
-  color: #475569;
+  color: #cbd5e1;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -269,76 +314,82 @@ button:not(:disabled):hover {
   border: 1px solid #fecdd3;
 }
 
-.server-card {
+.spotlight {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.spotlight-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.page-shell {
+  margin-top: 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
-.stat-grid {
+.card-header.split {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.branch-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
 }
 
-.stat {
-  background: #f8fafc;
+.meta-card,
+.info-card {
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.stat-label {
-  display: block;
-  color: #475569;
-  font-size: 14px;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.branch-meta {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-}
-
-.meta-item {
+  border-radius: 14px;
+  padding: 14px;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 10px;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.meta-row:last-of-type {
+  border-bottom: none;
 }
 
 .meta-label {
-  display: block;
   font-size: 13px;
   color: #475569;
-  margin-bottom: 4px;
 }
 
 .meta-value {
   font-weight: 800;
 }
 
-.badge-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #e0f2fe;
-  color: #0f172a;
-  font-weight: 700;
+.info-card ul {
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+  color: #334155;
 }
 
 .file-list {
@@ -394,15 +445,6 @@ button:not(:disabled):hover {
   gap: 6px;
 }
 
-.pill {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  padding: 4px 8px;
-  font-size: 13px;
-  color: #475569;
-}
-
 .download-btn {
   text-decoration: none;
   display: inline-flex;
@@ -448,25 +490,61 @@ button:not(:disabled):hover {
   align-items: center;
 }
 
+.admin-board {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.system-table {
+  margin-top: 18px;
+}
+
+.table-head,
+.table-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.table-head {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.table-row:last-of-type {
+  border-bottom: none;
+}
+
 .empty {
   text-align: center;
   padding: 16px;
   color: #475569;
   border: 1px dashed #cbd5e1;
   border-radius: 12px;
+  margin-top: 10px;
 }
 
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .download-layout {
+  .page-grid {
     grid-template-columns: 1fr;
   }
 
   .file-row {
     grid-template-columns: auto 1fr;
     grid-template-rows: auto auto;
+  }
+
+  .table-head,
+  .table-row {
+    grid-template-columns: 1fr;
+  }
+
+  .summary-item.action {
+    align-items: flex-start;
   }
 }
