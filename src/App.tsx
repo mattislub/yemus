@@ -1,5 +1,13 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { fetchUsers, login, type LoginRequest, type PublicUser } from './api/auth.ts';
+import {
+  createUser,
+  fetchUsers,
+  login,
+  updateAdminPassword,
+  updateUserIvrAccess,
+  type LoginRequest,
+  type PublicUser
+} from './api/auth.ts';
 import './App.css';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
@@ -14,10 +22,41 @@ function App() {
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState<string | null>(null);
+  const [adminPasswordForm, setAdminPasswordForm] = useState({
+    email: 'admin@yemot.local',
+    currentPassword: '',
+    newPassword: ''
+  });
+  const [adminPasswordStatus, setAdminPasswordStatus] = useState<Status>('idle');
+  const [adminPasswordMessage, setAdminPasswordMessage] = useState<string | null>(null);
+  const [newUserForm, setNewUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'user' as const,
+    phoneNumber: '',
+    ivrSystemNumber: '',
+    ivrPassword: ''
+  });
+  const [newUserStatus, setNewUserStatus] = useState<Status>('idle');
+  const [newUserMessage, setNewUserMessage] = useState<string | null>(null);
+  const [ivrUpdateForm, setIvrUpdateForm] = useState({
+    userId: '',
+    phoneNumber: '',
+    ivrSystemNumber: '',
+    ivrPassword: ''
+  });
+  const [ivrUpdateStatus, setIvrUpdateStatus] = useState<Status>('idle');
+  const [ivrUpdateMessage, setIvrUpdateMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers()
-      .then(setUsers)
+      .then((fetched) => {
+        setUsers(fetched);
+        if (!ivrUpdateForm.userId && fetched.length > 0) {
+          setIvrUpdateForm((prev) => ({ ...prev, userId: fetched[0].id }));
+        }
+      })
       .catch(() => setUsers([]));
   }, []);
 
@@ -49,6 +88,75 @@ function App() {
     } catch (err) {
       setStatus('error');
       setMessage((err as Error).message);
+    }
+  };
+
+  const handleAdminPasswordChange = async (event: FormEvent) => {
+    event.preventDefault();
+    setAdminPasswordMessage(null);
+    setAdminPasswordStatus('loading');
+
+    try {
+      const { notice } = await updateAdminPassword(adminPasswordForm);
+      setAdminPasswordStatus('success');
+      setAdminPasswordMessage(notice);
+      setAdminPasswordForm((prev) => ({ ...prev, currentPassword: '', newPassword: '' }));
+    } catch (error) {
+      setAdminPasswordStatus('error');
+      setAdminPasswordMessage((error as Error).message);
+    }
+  };
+
+  const handleCreateUser = async (event: FormEvent) => {
+    event.preventDefault();
+    setNewUserMessage(null);
+    setNewUserStatus('loading');
+
+    try {
+      await createUser({
+        ...newUserForm,
+        phoneNumber: newUserForm.phoneNumber || undefined,
+        ivrSystemNumber: newUserForm.ivrSystemNumber || undefined,
+        ivrPassword: newUserForm.ivrPassword || undefined
+      });
+      const refreshedUsers = await fetchUsers();
+      setUsers(refreshedUsers);
+      setNewUserStatus('success');
+      setNewUserMessage('משתמש חדש נוצר בהצלחה.');
+      setNewUserForm({
+        name: '',
+        email: '',
+        password: '',
+        role: 'user',
+        phoneNumber: '',
+        ivrSystemNumber: '',
+        ivrPassword: ''
+      });
+    } catch (error) {
+      setNewUserStatus('error');
+      setNewUserMessage((error as Error).message);
+    }
+  };
+
+  const handleIvrUpdate = async (event: FormEvent) => {
+    event.preventDefault();
+    setIvrUpdateMessage(null);
+    setIvrUpdateStatus('loading');
+
+    try {
+      const updated = await updateUserIvrAccess({
+        ...ivrUpdateForm,
+        phoneNumber: ivrUpdateForm.phoneNumber || undefined,
+        ivrSystemNumber: ivrUpdateForm.ivrSystemNumber || undefined,
+        ivrPassword: ivrUpdateForm.ivrPassword || undefined
+      });
+      const refreshedUsers = users.map((user) => (user.id === updated.id ? updated : user));
+      setUsers(refreshedUsers);
+      setIvrUpdateStatus('success');
+      setIvrUpdateMessage('פרטי מערכת עודכנו בהצלחה.');
+    } catch (error) {
+      setIvrUpdateStatus('error');
+      setIvrUpdateMessage((error as Error).message);
     }
   };
 
@@ -191,6 +299,259 @@ function App() {
 
             {users.length === 0 && <div className="empty">עדיין לא נשמרו משתמשים בשרת.</div>}
           </div>
+        </div>
+      </section>
+
+      <section className="admin-grid">
+        <div className="card form-card">
+          <div className="card-header">
+            <h2>דף מנהל – החלפת סיסמה</h2>
+            <p className="muted">החלפת סיסמת המנהל לצורך הגנה על הגישה למערכת.</p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleAdminPasswordChange}>
+            <label className="input-group">
+              <span>אימייל מנהל</span>
+              <input
+                type="email"
+                value={adminPasswordForm.email}
+                onChange={(e) => setAdminPasswordForm((prev) => ({ ...prev, email: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label className="input-group">
+              <span>סיסמה נוכחית</span>
+              <input
+                type="password"
+                value={adminPasswordForm.currentPassword}
+                onChange={(e) =>
+                  setAdminPasswordForm((prev) => ({ ...prev, currentPassword: e.target.value }))
+                }
+                required
+              />
+            </label>
+
+            <label className="input-group">
+              <span>סיסמה חדשה</span>
+              <input
+                type="password"
+                value={adminPasswordForm.newPassword}
+                onChange={(e) => setAdminPasswordForm((prev) => ({ ...prev, newPassword: e.target.value }))}
+                required
+              />
+            </label>
+
+            <div className="form-actions">
+              <button className="primary" type="submit" disabled={adminPasswordStatus === 'loading'}>
+                {adminPasswordStatus === 'loading' ? 'מעדכן...' : 'שמור סיסמה חדשה'}
+              </button>
+              <button
+                className="ghost"
+                type="button"
+                onClick={() =>
+                  setAdminPasswordForm({
+                    email: 'admin@yemot.local',
+                    currentPassword: '',
+                    newPassword: ''
+                  })
+                }
+                disabled={adminPasswordStatus === 'loading'}
+              >
+                איפוס טופס
+              </button>
+            </div>
+          </form>
+
+          {adminPasswordStatus === 'success' && adminPasswordMessage && (
+            <div className="status success">✅ {adminPasswordMessage}</div>
+          )}
+          {adminPasswordStatus === 'error' && adminPasswordMessage && (
+            <div className="status error">⚠️ {adminPasswordMessage}</div>
+          )}
+        </div>
+
+        <div className="card form-card">
+          <div className="card-header">
+            <h2>יצירת משתמש חדש</h2>
+            <p className="muted">הוספת משתמשים עם פרטי מערכת לימות המשיח לצורך קבלת טוקן.</p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleCreateUser}>
+            <label className="input-group">
+              <span>שם מלא</span>
+              <input
+                value={newUserForm.name}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="לדוגמה: חנה כהן"
+              />
+            </label>
+
+            <label className="input-group">
+              <span>אימייל</span>
+              <input
+                type="email"
+                value={newUserForm.email}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, email: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label className="input-group">
+              <span>סיסמת מערכת</span>
+              <input
+                type="password"
+                value={newUserForm.password}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, password: e.target.value }))}
+                required
+              />
+            </label>
+
+            <label className="input-group">
+              <span>תפקיד</span>
+              <select
+                value={newUserForm.role}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, role: e.target.value as 'admin' | 'user' }))}
+                className="select-input"
+              >
+                <option value="admin">מנהל</option>
+                <option value="user">משתמש</option>
+              </select>
+            </label>
+
+            <label className="input-group">
+              <span>מספר טלפון</span>
+              <input
+                type="tel"
+                value={newUserForm.phoneNumber}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                placeholder="לדוגמה: +972501234567"
+              />
+            </label>
+
+            <label className="input-group">
+              <span>מספר מערכת ימות המשיח</span>
+              <input
+                value={newUserForm.ivrSystemNumber}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, ivrSystemNumber: e.target.value }))}
+                placeholder="לדוגמה: 0771234567"
+              />
+            </label>
+
+            <label className="input-group">
+              <span>סיסמת מערכת ימות המשיח</span>
+              <input
+                type="password"
+                value={newUserForm.ivrPassword}
+                onChange={(e) => setNewUserForm((prev) => ({ ...prev, ivrPassword: e.target.value }))}
+                placeholder="לדוגמה: Pass1234"
+              />
+            </label>
+
+            <div className="form-actions">
+              <button className="primary" type="submit" disabled={newUserStatus === 'loading'}>
+                {newUserStatus === 'loading' ? 'שומר...' : 'צור משתמש'}
+              </button>
+              <button
+                className="ghost"
+                type="button"
+                onClick={() =>
+                  setNewUserForm({
+                    name: '',
+                    email: '',
+                    password: '',
+                    role: 'user',
+                    phoneNumber: '',
+                    ivrSystemNumber: '',
+                    ivrPassword: ''
+                  })
+                }
+                disabled={newUserStatus === 'loading'}
+              >
+                איפוס טופס
+              </button>
+            </div>
+          </form>
+
+          {newUserStatus === 'success' && newUserMessage && <div className="status success">✅ {newUserMessage}</div>}
+          {newUserStatus === 'error' && newUserMessage && <div className="status error">⚠️ {newUserMessage}</div>}
+        </div>
+
+        <div className="card form-card">
+          <div className="card-header">
+            <h2>הגדרות מערכת למשתמשים</h2>
+            <p className="muted">עדכון מספר טלפון וסיסמת מערכת לקבלת טוקן API להורדת קבצים.</p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleIvrUpdate}>
+            <label className="input-group">
+              <span>בחר משתמש</span>
+              <select
+                value={ivrUpdateForm.userId}
+                onChange={(e) => setIvrUpdateForm((prev) => ({ ...prev, userId: e.target.value }))}
+                className="select-input"
+              >
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name || user.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="input-group">
+              <span>מספר טלפון</span>
+              <input
+                type="tel"
+                value={ivrUpdateForm.phoneNumber}
+                onChange={(e) => setIvrUpdateForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                placeholder="לדוגמה: +972501234567"
+              />
+            </label>
+
+            <label className="input-group">
+              <span>מספר מערכת ימות המשיח</span>
+              <input
+                value={ivrUpdateForm.ivrSystemNumber}
+                onChange={(e) => setIvrUpdateForm((prev) => ({ ...prev, ivrSystemNumber: e.target.value }))}
+                placeholder="לדוגמה: 0771234567"
+              />
+            </label>
+
+            <label className="input-group">
+              <span>סיסמת מערכת ימות המשיח</span>
+              <input
+                type="password"
+                value={ivrUpdateForm.ivrPassword}
+                onChange={(e) => setIvrUpdateForm((prev) => ({ ...prev, ivrPassword: e.target.value }))}
+                placeholder="לדוגמה: Pass1234"
+              />
+            </label>
+
+            <div className="form-actions">
+              <button className="primary" type="submit" disabled={ivrUpdateStatus === 'loading'}>
+                {ivrUpdateStatus === 'loading' ? 'מעדכן...' : 'שמור הגדרות'}
+              </button>
+              <button
+                className="ghost"
+                type="button"
+                onClick={() =>
+                  setIvrUpdateForm((prev) => ({
+                    ...prev,
+                    phoneNumber: '',
+                    ivrSystemNumber: '',
+                    ivrPassword: ''
+                  }))
+                }
+                disabled={ivrUpdateStatus === 'loading'}
+              >
+                איפוס פרטים
+              </button>
+            </div>
+          </form>
+
+          {ivrUpdateStatus === 'success' && ivrUpdateMessage && <div className="status success">✅ {ivrUpdateMessage}</div>}
+          {ivrUpdateStatus === 'error' && ivrUpdateMessage && <div className="status error">⚠️ {ivrUpdateMessage}</div>}
         </div>
       </section>
     </div>
