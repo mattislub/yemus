@@ -4,6 +4,9 @@ export type ManagedUser = {
   id: string;
   username: string;
   role: Role;
+  systemNumber: string;
+  systemPassword: string;
+  extensions: string[];
   updatedAt: string;
 };
 
@@ -15,11 +18,17 @@ type CreatePayload = {
   username: string;
   password: string;
   role: Role;
+  systemNumber: string;
+  systemPassword: string;
+  extensions: string[];
 };
 
 type UpdatePayload = {
   role?: Role;
   password?: string;
+  systemNumber?: string;
+  systemPassword?: string;
+  extensions?: string[];
 };
 
 const serverState: { users: ServerUser[] } = {
@@ -29,6 +38,9 @@ const serverState: { users: ServerUser[] } = {
       username: 'פנחס',
       role: 'manager',
       password: '613613',
+      systemNumber: '10010',
+      systemPassword: 'shalom123',
+      extensions: ['1', '2', '10'],
       updatedAt: new Date().toISOString(),
     },
     {
@@ -36,6 +48,9 @@ const serverState: { users: ServerUser[] } = {
       username: 'אופרציה',
       role: 'user',
       password: 'opsStrong!2',
+      systemNumber: '20020',
+      systemPassword: 'opsPass99',
+      extensions: ['1'],
       updatedAt: new Date().toISOString(),
     },
   ],
@@ -47,6 +62,9 @@ const withoutPassword = (user: ServerUser): ManagedUser => ({
   id: user.id,
   username: user.username,
   role: user.role,
+  systemNumber: user.systemNumber,
+  systemPassword: user.systemPassword,
+  extensions: user.extensions,
   updatedAt: user.updatedAt,
 });
 
@@ -71,6 +89,9 @@ export async function createUser(payload: CreatePayload): Promise<ManagedUser> {
     username: payload.username.trim(),
     role: payload.role,
     password: payload.password,
+    systemNumber: payload.systemNumber.trim(),
+    systemPassword: payload.systemPassword.trim(),
+    extensions: payload.extensions,
     updatedAt: now,
   };
 
@@ -88,6 +109,18 @@ export async function updateUser(id: string, updates: UpdatePayload): Promise<Ma
 
   if (updates.role) {
     record.role = updates.role;
+  }
+
+  if (typeof updates.systemNumber === 'string') {
+    record.systemNumber = updates.systemNumber;
+  }
+
+  if (typeof updates.systemPassword === 'string') {
+    record.systemPassword = updates.systemPassword;
+  }
+
+  if (updates.extensions !== undefined) {
+    record.extensions = updates.extensions;
   }
 
   if (updates.password) {

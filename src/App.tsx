@@ -13,6 +13,14 @@ type LoginCardProps = {
   onSuccess: (user: ManagedUser) => void;
 };
 
+const parseExtensions = (raw: string): string[] =>
+  raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const formatExtensions = (extensions: string[]): string => extensions.join(', ');
+
 function LoginCard({ onSuccess }: LoginCardProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -78,8 +86,21 @@ type AdminPageProps = {
 function AdminPage({ user, onLogout }: AdminPageProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [createForm, setCreateForm] = useState({ username: '', password: '', role: 'user' as Role });
-  const [updateForm, setUpdateForm] = useState({ password: '', role: 'user' as Role });
+  const [createForm, setCreateForm] = useState({
+    username: '',
+    password: '',
+    role: 'user' as Role,
+    systemNumber: '',
+    systemPassword: '',
+    extensionsText: '',
+  });
+  const [updateForm, setUpdateForm] = useState({
+    password: '',
+    role: 'user' as Role,
+    systemNumber: '',
+    systemPassword: '',
+    extensionsText: '',
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -89,6 +110,16 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
     [selectedUserId, users],
   );
 
+  const applyUserToUpdateForm = (record: ManagedUser) => {
+    setUpdateForm({
+      password: '',
+      role: record.role,
+      systemNumber: record.systemNumber,
+      systemPassword: record.systemPassword,
+      extensionsText: formatExtensions(record.extensions),
+    });
+  };
+
   const loadUsers = async () => {
     setLoading(true);
     setError('');
@@ -97,7 +128,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       setUsers(fromServer);
       if (!selectedUserId && fromServer.length) {
         setSelectedUserId(fromServer[0].id);
-        setUpdateForm((previous) => ({ ...previous, role: fromServer[0].role }));
+        applyUserToUpdateForm(fromServer[0]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה בעת טעינת משתמשים מהשרת');
@@ -121,12 +152,26 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
     }
 
     try {
-      const created = await createUser(createForm);
+      const created = await createUser({
+        username: createForm.username,
+        password: createForm.password,
+        role: createForm.role,
+        systemNumber: createForm.systemNumber,
+        systemPassword: createForm.systemPassword,
+        extensions: parseExtensions(createForm.extensionsText),
+      });
       setUsers((previous) => [...previous, created]);
       setSuccess(`המשתמש ${createForm.username} נוצר ונשמר בשרת.`);
-      setCreateForm({ username: '', password: '', role: 'user' });
+      setCreateForm({
+        username: '',
+        password: '',
+        role: 'user',
+        systemNumber: '',
+        systemPassword: '',
+        extensionsText: '',
+      });
       setSelectedUserId(created.id);
-      setUpdateForm({ password: '', role: created.role });
+      applyUserToUpdateForm(created);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'לא ניתן ליצור משתמש חדש כרגע.');
     }
@@ -151,10 +196,13 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       const updated = await updateUser(selectedUserId, {
         role: updateForm.role,
         password: updateForm.password || undefined,
+        systemNumber: updateForm.systemNumber,
+        systemPassword: updateForm.systemPassword,
+        extensions: parseExtensions(updateForm.extensionsText),
       });
       setUsers((previous) => previous.map((user) => (user.id === updated.id ? updated : user)));
       setSuccess('פרטי המשתמש נשמרו בשרת.');
-      setUpdateForm((previous) => ({ ...previous, password: '' }));
+      applyUserToUpdateForm(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'עדכון משתמש נכשל.');
     }
@@ -206,6 +254,26 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
             />
           </label>
           <label className="field">
+            <span>מספר מערכת</span>
+            <input
+              type="text"
+              value={createForm.systemNumber}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
+              placeholder="לדוגמה: 10010"
+              required
+            />
+          </label>
+          <label className="field">
+            <span>סיסמת מערכת</span>
+            <input
+              type="text"
+              value={createForm.systemPassword}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
+              placeholder="הסיסמה להגדרות המערכת"
+              required
+            />
+          </label>
+          <label className="field">
             <span>סיסמה</span>
             <input
               type="password"
@@ -224,6 +292,16 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
               <option value="user">משתמש</option>
               <option value="manager">מנהל</option>
             </select>
+          </label>
+          <label className="field">
+            <span>שלוחות במערכת</span>
+            <textarea
+              value={createForm.extensionsText}
+              onChange={(event) => setCreateForm((prev) => ({ ...prev, extensionsText: event.target.value }))}
+              placeholder="הפרד בין שלוחות בפסיקים, לדוגמה: 1,2,10"
+              rows={3}
+              required
+            />
           </label>
           <button type="submit" className="submit-button" disabled={loading}>שמור בשרת</button>
         </form>
@@ -246,12 +324,15 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                   className={`table-row ${selectedUserId === user.id ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedUserId(user.id);
-                    setUpdateForm((prev) => ({ ...prev, role: user.role }));
+                    applyUserToUpdateForm(user);
                   }}
                 >
                   <div>
                     <p className="row-title">{user.username}</p>
-                    <p className="row-subtitle">{new Date(user.updatedAt).toLocaleString()}</p>
+                    <p className="row-subtitle">
+                      מערכת {user.systemNumber} • {user.extensions.length ? `${user.extensions.length} שלוחות` : 'ללא שלוחות'}
+                    </p>
+                    <p className="row-subtitle">עודכן: {new Date(user.updatedAt).toLocaleString()}</p>
                   </div>
                   <span className={`badge ${user.role === 'manager' ? 'badge-strong' : ''}`}>
                     {user.role === 'manager' ? 'מנהל' : 'משתמש'}
@@ -283,6 +364,28 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
             </select>
           </label>
           <label className="field">
+            <span>מספר מערכת</span>
+            <input
+              type="text"
+              value={updateForm.systemNumber}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
+              placeholder="לדוגמה: 10010"
+              disabled={!selectedUser}
+              required
+            />
+          </label>
+          <label className="field">
+            <span>סיסמת מערכת</span>
+            <input
+              type="text"
+              value={updateForm.systemPassword}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
+              placeholder="הסיסמה להגדרות המערכת"
+              disabled={!selectedUser}
+              required
+            />
+          </label>
+          <label className="field">
             <span>סיסמה חדשה</span>
             <input
               type="password"
@@ -292,6 +395,30 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
               disabled={!selectedUser}
             />
           </label>
+          <label className="field">
+            <span>שלוחות במערכת</span>
+            <textarea
+              value={updateForm.extensionsText}
+              onChange={(event) => setUpdateForm((prev) => ({ ...prev, extensionsText: event.target.value }))}
+              placeholder="הפרד בין שלוחות בפסיקים, לדוגמה: 1,2,10"
+              rows={3}
+              disabled={!selectedUser}
+              required
+            />
+          </label>
+          {selectedUser && (
+            <div className="extensions-row">
+              <span className="muted">שלוחות נוכחיות:</span>
+              <div className="chips">
+                {selectedUser.extensions.map((extension) => (
+                  <span key={extension} className="chip">
+                    {extension}
+                  </span>
+                ))}
+                {selectedUser.extensions.length === 0 && <span className="muted">אין שלוחות משויכות.</span>}
+              </div>
+            </div>
+          )}
           <button type="submit" className="submit-button" disabled={!selectedUser || loading}>שמור שינויים</button>
         </form>
       </div>
