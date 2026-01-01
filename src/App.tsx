@@ -139,6 +139,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     username: '',
     password: '',
@@ -231,7 +232,6 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       });
       setSelectedUserId(created.id);
       applyUserToUpdateForm(created);
-      setIsUpdateFormOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'לא ניתן ליצור משתמש חדש כרגע.');
     }
@@ -240,6 +240,16 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
   const handleSelectUser = (record: ManagedUser) => {
     setSelectedUserId(record.id);
     applyUserToUpdateForm(record);
+  };
+
+  const handleOpenUpdateForm = () => {
+    if (selectedUser) {
+      setIsUpdateFormOpen(true);
+    }
+  };
+
+  const handleEditUser = (record: ManagedUser) => {
+    handleSelectUser(record);
     setIsUpdateFormOpen(true);
   };
 
@@ -310,68 +320,91 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       )}
 
       <div className="admin-grid">
-        <form className="panel" onSubmit={handleCreateUser}>
-          <div className="panel-header">
-            <h2>הוספת משתמש חדש</h2>
-            <p>החשבון ישמר על השרת ויופיע ברשימת המשתמשים.</p>
-          </div>
-          <label className="field">
-            <span>שם משתמש</span>
-            <input
-              type="text"
-              value={createForm.username}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, username: event.target.value }))}
-              placeholder="שם ייחודי במערכת"
-              required
-            />
-          </label>
-          <label className="field">
-            <span>מספר מערכת</span>
-            <input
-              type="text"
-              value={createForm.systemNumber}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
-              placeholder="לדוגמה: 10010"
-              required
-            />
-          </label>
-          <label className="field">
-            <span>סיסמת מערכת</span>
-            <input
-              type="text"
-              value={createForm.systemPassword}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
-              placeholder="הסיסמה להגדרות המערכת"
-              required
-            />
-          </label>
-          <label className="field">
-            <span>סיסמה</span>
-            <input
-              type="password"
-              value={createForm.password}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
-              placeholder="לפחות 8 תווים"
-              required
-            />
-          </label>
-          <label className="field">
-            <span>תפקיד</span>
-            <select
-              value={createForm.role}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value as Role }))}
+        <div className="panel">
+          <div className="panel-header panel-header-row">
+            <div>
+              <h2>הוספת משתמש חדש</h2>
+              <p>החשבון ישמר על השרת ויופיע ברשימת המשתמשים.</p>
+            </div>
+            <button
+              type="button"
+              className="refresh-button primary-action"
+              onClick={() => setIsCreateFormOpen((previous) => !previous)}
             >
-              <option value="user">משתמש</option>
-              <option value="manager">מנהל</option>
-            </select>
-          </label>
-          <ExtensionsFieldset
-            values={createForm.extensions}
-            onChange={(extensions) => setCreateForm((prev) => ({ ...prev, extensions }))}
-            helper="כל שלוחה מוזנת בשדה נפרד. הוסיפו או הסירו שורות לפי הצורך."
-          />
-          <button type="submit" className="submit-button" disabled={loading}>שמור בשרת</button>
-        </form>
+              {isCreateFormOpen ? 'סגור טופס' : 'הוסף משתמש חדש'}
+            </button>
+          </div>
+
+          {!isCreateFormOpen ? (
+            <p className="muted">לחצו על "הוסף משתמש חדש" כדי לפתוח את הטופס ולמלא פרטי משתמש.</p>
+          ) : (
+            <form className="form" onSubmit={handleCreateUser}>
+              <label className="field">
+                <span>שם משתמש</span>
+                <input
+                  type="text"
+                  value={createForm.username}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, username: event.target.value }))}
+                  placeholder="שם ייחודי במערכת"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>מספר מערכת</span>
+                <input
+                  type="text"
+                  value={createForm.systemNumber}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
+                  placeholder="לדוגמה: 10010"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>סיסמת מערכת</span>
+                <input
+                  type="text"
+                  value={createForm.systemPassword}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
+                  placeholder="הסיסמה להגדרות המערכת"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>סיסמה</span>
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, password: event.target.value }))}
+                  placeholder="לפחות 8 תווים"
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>תפקיד</span>
+                <select
+                  value={createForm.role}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, role: event.target.value as Role }))}
+                >
+                  <option value="user">משתמש</option>
+                  <option value="manager">מנהל</option>
+                </select>
+              </label>
+              <ExtensionsFieldset
+                values={createForm.extensions}
+                onChange={(extensions) => setCreateForm((prev) => ({ ...prev, extensions }))}
+                helper="כל שלוחה מוזנת בשדה נפרד. הוסיפו או הסירו שורות לפי הצורך."
+              />
+              <div className="form-actions">
+                <button type="button" className="refresh-button" onClick={() => setIsCreateFormOpen(false)}>
+                  בטל
+                </button>
+                <button type="submit" className="submit-button" disabled={loading}>
+                  שמור בשרת
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
 
         <div className="panel">
           <div className="panel-header">
@@ -426,7 +459,14 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                     {new Date(user.updatedAt).toLocaleString()}
                   </div>
                   <div className="cell cell-actions" data-label="פעולות">
-                    <button type="button" className="ghost-button" onClick={() => handleSelectUser(user)}>
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleEditUser(user);
+                      }}
+                    >
                       ערוך
                     </button>
                   </div>
@@ -445,7 +485,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
             <button
               type="button"
               className="refresh-button primary-action"
-              onClick={() => selectedUser && setIsUpdateFormOpen(true)}
+              onClick={handleOpenUpdateForm}
               disabled={!selectedUser}
             >
               פתח טופס עריכה
