@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   createUser,
   listUsers,
@@ -69,6 +69,68 @@ function ExtensionsFieldset({ values, onChange, disabled, helper }: ExtensionsFi
           הוסף שלוחה
         </button>
       </div>
+    </div>
+  );
+}
+
+type SystemDetailsSectionProps = {
+  systemNumber: string;
+  systemPassword: string;
+  extensions: string[];
+  onSystemNumberChange: (value: string) => void;
+  onSystemPasswordChange: (value: string) => void;
+  onExtensionsChange: (next: string[]) => void;
+  disabled?: boolean;
+  helper?: string;
+  footer?: ReactNode;
+};
+
+function SystemDetailsSection({
+  systemNumber,
+  systemPassword,
+  extensions,
+  onSystemNumberChange,
+  onSystemPasswordChange,
+  onExtensionsChange,
+  disabled,
+  helper,
+  footer,
+}: SystemDetailsSectionProps) {
+  return (
+    <div className="details-block">
+      <div className="details-block-header">
+        <h3>פרטי מערכת</h3>
+        <p className="muted">ריכוז מספר המערכת, הסיסמה והשלוחות במקום אחד.</p>
+      </div>
+      <label className="field">
+        <span>מספר מערכת</span>
+        <input
+          type="text"
+          value={systemNumber}
+          onChange={(event) => onSystemNumberChange(event.target.value)}
+          placeholder="לדוגמה: 10010"
+          disabled={disabled}
+          required
+        />
+      </label>
+      <label className="field">
+        <span>סיסמת מערכת</span>
+        <input
+          type="text"
+          value={systemPassword}
+          onChange={(event) => onSystemPasswordChange(event.target.value)}
+          placeholder="הסיסמה להגדרות המערכת"
+          disabled={disabled}
+          required
+        />
+      </label>
+      <ExtensionsFieldset
+        values={extensions}
+        onChange={onExtensionsChange}
+        disabled={disabled}
+        helper={helper ?? 'כל שלוחה מוזנת בשדה נפרד. הוסיפו או הסירו שורות לפי הצורך.'}
+      />
+      {footer}
     </div>
   );
 }
@@ -349,26 +411,14 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                   required
                 />
               </label>
-              <label className="field">
-                <span>מספר מערכת</span>
-                <input
-                  type="text"
-                  value={createForm.systemNumber}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
-                  placeholder="לדוגמה: 10010"
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>סיסמת מערכת</span>
-                <input
-                  type="text"
-                  value={createForm.systemPassword}
-                  onChange={(event) => setCreateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
-                  placeholder="הסיסמה להגדרות המערכת"
-                  required
-                />
-              </label>
+              <SystemDetailsSection
+                systemNumber={createForm.systemNumber}
+                systemPassword={createForm.systemPassword}
+                extensions={createForm.extensions}
+                onSystemNumberChange={(value) => setCreateForm((prev) => ({ ...prev, systemNumber: value }))}
+                onSystemPasswordChange={(value) => setCreateForm((prev) => ({ ...prev, systemPassword: value }))}
+                onExtensionsChange={(extensions) => setCreateForm((prev) => ({ ...prev, extensions }))}
+              />
               <label className="field">
                 <span>סיסמה</span>
                 <input
@@ -389,11 +439,6 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                   <option value="manager">מנהל</option>
                 </select>
               </label>
-              <ExtensionsFieldset
-                values={createForm.extensions}
-                onChange={(extensions) => setCreateForm((prev) => ({ ...prev, extensions }))}
-                helper="כל שלוחה מוזנת בשדה נפרד. הוסיפו או הסירו שורות לפי הצורך."
-              />
               <div className="form-actions">
                 <button type="button" className="refresh-button" onClick={() => setIsCreateFormOpen(false)}>
                   בטל
@@ -511,28 +556,31 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                   <option value="manager">מנהל</option>
                 </select>
               </label>
-              <label className="field">
-                <span>מספר מערכת</span>
-                <input
-                  type="text"
-                  value={updateForm.systemNumber}
-                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
-                  placeholder="לדוגמה: 10010"
-                  disabled={!selectedUser}
-                  required
-                />
-              </label>
-              <label className="field">
-                <span>סיסמת מערכת</span>
-                <input
-                  type="text"
-                  value={updateForm.systemPassword}
-                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
-                  placeholder="הסיסמה להגדרות המערכת"
-                  disabled={!selectedUser}
-                  required
-                />
-              </label>
+              <SystemDetailsSection
+                systemNumber={updateForm.systemNumber}
+                systemPassword={updateForm.systemPassword}
+                extensions={updateForm.extensions}
+                onSystemNumberChange={(value) => setUpdateForm((prev) => ({ ...prev, systemNumber: value }))}
+                onSystemPasswordChange={(value) => setUpdateForm((prev) => ({ ...prev, systemPassword: value }))}
+                onExtensionsChange={(extensions) => setUpdateForm((prev) => ({ ...prev, extensions }))}
+                disabled={!selectedUser}
+                helper="לכל שלוחה שדה ייעודי. ניתן להסיר או להוסיף שלוחות לפי הצורך."
+                footer={
+                  selectedUser && (
+                    <div className="extensions-row">
+                      <span className="muted">שלוחות נוכחיות:</span>
+                      <div className="chips">
+                        {selectedUser.extensions.map((extension) => (
+                          <span key={extension} className="chip">
+                            {extension}
+                          </span>
+                        ))}
+                        {selectedUser.extensions.length === 0 && <span className="muted">אין שלוחות משויכות.</span>}
+                      </div>
+                    </div>
+                  )
+                }
+              />
               <label className="field">
                 <span>סיסמה חדשה</span>
                 <input
@@ -543,25 +591,6 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                   disabled={!selectedUser}
                 />
               </label>
-              <ExtensionsFieldset
-                values={updateForm.extensions}
-                onChange={(extensions) => setUpdateForm((prev) => ({ ...prev, extensions }))}
-                disabled={!selectedUser}
-                helper="לכל שלוחה שדה ייעודי. ניתן להסיר או להוסיף שלוחות לפי הצורך."
-              />
-              {selectedUser && (
-                <div className="extensions-row">
-                  <span className="muted">שלוחות נוכחיות:</span>
-                  <div className="chips">
-                    {selectedUser.extensions.map((extension) => (
-                      <span key={extension} className="chip">
-                        {extension}
-                      </span>
-                    ))}
-                    {selectedUser.extensions.length === 0 && <span className="muted">אין שלוחות משויכות.</span>}
-                  </div>
-                </div>
-              )}
               <div className="form-actions">
                 <button type="button" className="refresh-button" onClick={() => setIsUpdateFormOpen(false)}>
                   סגור טופס
