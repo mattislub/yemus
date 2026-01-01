@@ -1,11 +1,6 @@
 import { randomUUID } from 'crypto';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-const logApi = (...messages) => console.info('[Mock API]', ...messages);
-const logApiError = (error, context) => {
-    const normalized = error instanceof Error ? error.stack ?? error.message : String(error);
-    console.error('[Mock API] Unexpected error', { method: context.method, url: context.url, error: normalized });
-};
 const serverState = {
     users: [
         {
@@ -65,10 +60,8 @@ const apiHandler = async (req, res, next) => {
         next();
         return;
     }
-    logApi('Incoming request', { method: request.method, url: request.url });
     try {
         if (request.url === '/api/users' && request.method === 'GET') {
-            logApi('Listing users');
             sendJson(res, 200, serverState.users.map(withoutPassword));
             return;
         }
@@ -76,7 +69,6 @@ const apiHandler = async (req, res, next) => {
             const body = await parseBody(req);
             const exists = serverState.users.some((user) => user.username.trim().toLowerCase() === body.username.trim().toLowerCase());
             if (exists) {
-                logApi('Attempt to create duplicate user', body.username);
                 sendJson(res, 409, { message: 'משתמש עם שם זה כבר קיים בשרת.' });
                 return;
             }
@@ -91,7 +83,6 @@ const apiHandler = async (req, res, next) => {
                 updatedAt: new Date().toISOString(),
             };
             serverState.users.push(record);
-            logApi('Created user', record.id);
             sendJson(res, 201, withoutPassword(record));
             return;
         }
@@ -99,7 +90,6 @@ const apiHandler = async (req, res, next) => {
             const id = request.url.replace('/api/users/', '');
             const record = serverState.users.find((user) => user.id === id);
             if (!record) {
-                logApi('User not found for update', id);
                 sendJson(res, 404, { message: 'המשתמש לא נמצא בשרת.' });
                 return;
             }
@@ -115,7 +105,6 @@ const apiHandler = async (req, res, next) => {
             if (updates.password)
                 record.password = updates.password;
             record.updatedAt = new Date().toISOString();
-            logApi('Updated user', record.id);
             sendJson(res, 200, withoutPassword(record));
             return;
         }
@@ -123,17 +112,14 @@ const apiHandler = async (req, res, next) => {
             const body = await parseBody(req);
             const record = serverState.users.find((user) => user.username.trim().toLowerCase() === body.username.trim().toLowerCase());
             if (!record || record.password !== body.password) {
-                logApi('Failed login attempt', { username: body.username, reason: 'Invalid credentials' });
                 sendJson(res, 401, { message: 'שם משתמש או סיסמה שגויים.' });
                 return;
             }
-            logApi('Successful login', { username: record.username, role: record.role });
             sendJson(res, 200, withoutPassword(record));
             return;
         }
     }
     catch (error) {
-        logApiError(error, request);
         sendJson(res, 500, { message: error instanceof Error ? error.message : 'שגיאת שרת.' });
         return;
     }
