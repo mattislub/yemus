@@ -86,6 +86,7 @@ type AdminPageProps = {
 function AdminPage({ user, onLogout }: AdminPageProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     username: '',
     password: '',
@@ -172,9 +173,16 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       });
       setSelectedUserId(created.id);
       applyUserToUpdateForm(created);
+      setIsUpdateFormOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'לא ניתן ליצור משתמש חדש כרגע.');
     }
+  };
+
+  const handleSelectUser = (record: ManagedUser) => {
+    setSelectedUserId(record.id);
+    applyUserToUpdateForm(record);
+    setIsUpdateFormOpen(true);
   };
 
   const handleUpdateUser = async (event: FormEvent<HTMLFormElement>) => {
@@ -316,111 +324,159 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
           ) : users.length === 0 ? (
             <p className="muted">אין משתמשים בשרת.</p>
           ) : (
-            <div className="table">
+            <div className="table-grid">
+              <div className="table-head">
+                <span>משתמש</span>
+                <span>תפקיד</span>
+                <span>מספר מערכת</span>
+                <span>שלוחות</span>
+                <span>עודכן</span>
+                <span className="cell-actions">פעולות</span>
+              </div>
               {users.map((user) => (
-                <button
+                <div
                   key={user.id}
-                  type="button"
-                  className={`table-row ${selectedUserId === user.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedUserId(user.id);
-                    applyUserToUpdateForm(user);
+                  className={`table-grid-row ${selectedUserId === user.id ? 'active' : ''}`}
+                  onClick={() => handleSelectUser(user)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      handleSelectUser(user);
+                    }
                   }}
                 >
-                  <div>
+                  <div className="cell cell-main">
                     <p className="row-title">{user.username}</p>
                     <p className="row-subtitle">
                       מערכת {user.systemNumber} • {user.extensions.length ? `${user.extensions.length} שלוחות` : 'ללא שלוחות'}
                     </p>
-                    <p className="row-subtitle">עודכן: {new Date(user.updatedAt).toLocaleString()}</p>
                   </div>
-                  <span className={`badge ${user.role === 'manager' ? 'badge-strong' : ''}`}>
-                    {user.role === 'manager' ? 'מנהל' : 'משתמש'}
-                  </span>
-                </button>
+                  <div className="cell" data-label="תפקיד">
+                    <span className={`badge ${user.role === 'manager' ? 'badge-strong' : ''}`}>
+                      {user.role === 'manager' ? 'מנהל' : 'משתמש'}
+                    </span>
+                  </div>
+                  <div className="cell table-meta" data-label="מספר מערכת">
+                    {user.systemNumber}
+                  </div>
+                  <div className="cell table-meta" data-label="שלוחות">
+                    {user.extensions.length ? user.extensions.join(', ') : '—'}
+                  </div>
+                  <div className="cell table-meta" data-label="עודכן">
+                    {new Date(user.updatedAt).toLocaleString()}
+                  </div>
+                  <div className="cell cell-actions" data-label="פעולות">
+                    <button type="button" className="ghost-button" onClick={() => handleSelectUser(user)}>
+                      ערוך
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
 
-        <form className="panel" onSubmit={handleUpdateUser}>
-          <div className="panel-header">
-            <h2>עדכון חשבון</h2>
-            <p>שינוי התפקיד ואיפוס סיסמה של משתמש שנבחר.</p>
-          </div>
-          <label className="field">
-            <span>משתמש שנבחר</span>
-            <input type="text" value={selectedUser?.username ?? 'לא נבחר'} disabled />
-          </label>
-          <label className="field">
-            <span>תפקיד</span>
-            <select
-              value={updateForm.role}
-              onChange={(event) => setUpdateForm((prev) => ({ ...prev, role: event.target.value as Role }))}
+        <div className="panel edit-panel">
+          <div className="panel-header panel-header-row">
+            <div>
+              <h2>עדכון חשבון</h2>
+              <p>שינוי התפקיד ואיפוס סיסמה של משתמש שנבחר.</p>
+            </div>
+            <button
+              type="button"
+              className="refresh-button primary-action"
+              onClick={() => selectedUser && setIsUpdateFormOpen(true)}
               disabled={!selectedUser}
             >
-              <option value="user">משתמש</option>
-              <option value="manager">מנהל</option>
-            </select>
-          </label>
-          <label className="field">
-            <span>מספר מערכת</span>
-            <input
-              type="text"
-              value={updateForm.systemNumber}
-              onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
-              placeholder="לדוגמה: 10010"
-              disabled={!selectedUser}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>סיסמת מערכת</span>
-            <input
-              type="text"
-              value={updateForm.systemPassword}
-              onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
-              placeholder="הסיסמה להגדרות המערכת"
-              disabled={!selectedUser}
-              required
-            />
-          </label>
-          <label className="field">
-            <span>סיסמה חדשה</span>
-            <input
-              type="password"
-              value={updateForm.password}
-              onChange={(event) => setUpdateForm((prev) => ({ ...prev, password: event.target.value }))}
-              placeholder="השאר ריק אם לא מעדכנים"
-              disabled={!selectedUser}
-            />
-          </label>
-          <label className="field">
-            <span>שלוחות במערכת</span>
-            <textarea
-              value={updateForm.extensionsText}
-              onChange={(event) => setUpdateForm((prev) => ({ ...prev, extensionsText: event.target.value }))}
-              placeholder="הפרד בין שלוחות בפסיקים, לדוגמה: 1,2,10"
-              rows={3}
-              disabled={!selectedUser}
-              required
-            />
-          </label>
-          {selectedUser && (
-            <div className="extensions-row">
-              <span className="muted">שלוחות נוכחיות:</span>
-              <div className="chips">
-                {selectedUser.extensions.map((extension) => (
-                  <span key={extension} className="chip">
-                    {extension}
-                  </span>
-                ))}
-                {selectedUser.extensions.length === 0 && <span className="muted">אין שלוחות משויכות.</span>}
+              פתח טופס עריכה
+            </button>
+          </div>
+
+          {!isUpdateFormOpen ? (
+            <p className="muted">בחר משתמש מרשימת המשתמשים ולחץ על "פתח טופס עריכה" כדי לעדכן את פרטיו.</p>
+          ) : (
+            <form className="form" onSubmit={handleUpdateUser}>
+              <label className="field">
+                <span>משתמש שנבחר</span>
+                <input type="text" value={selectedUser?.username ?? 'לא נבחר'} disabled />
+              </label>
+              <label className="field">
+                <span>תפקיד</span>
+                <select
+                  value={updateForm.role}
+                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, role: event.target.value as Role }))}
+                  disabled={!selectedUser}
+                >
+                  <option value="user">משתמש</option>
+                  <option value="manager">מנהל</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>מספר מערכת</span>
+                <input
+                  type="text"
+                  value={updateForm.systemNumber}
+                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemNumber: event.target.value }))}
+                  placeholder="לדוגמה: 10010"
+                  disabled={!selectedUser}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>סיסמת מערכת</span>
+                <input
+                  type="text"
+                  value={updateForm.systemPassword}
+                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, systemPassword: event.target.value }))}
+                  placeholder="הסיסמה להגדרות המערכת"
+                  disabled={!selectedUser}
+                  required
+                />
+              </label>
+              <label className="field">
+                <span>סיסמה חדשה</span>
+                <input
+                  type="password"
+                  value={updateForm.password}
+                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, password: event.target.value }))}
+                  placeholder="השאר ריק אם לא מעדכנים"
+                  disabled={!selectedUser}
+                />
+              </label>
+              <label className="field">
+                <span>שלוחות במערכת</span>
+                <textarea
+                  value={updateForm.extensionsText}
+                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, extensionsText: event.target.value }))}
+                  placeholder="הפרד בין שלוחות בפסיקים, לדוגמה: 1,2,10"
+                  rows={3}
+                  disabled={!selectedUser}
+                  required
+                />
+              </label>
+              {selectedUser && (
+                <div className="extensions-row">
+                  <span className="muted">שלוחות נוכחיות:</span>
+                  <div className="chips">
+                    {selectedUser.extensions.map((extension) => (
+                      <span key={extension} className="chip">
+                        {extension}
+                      </span>
+                    ))}
+                    {selectedUser.extensions.length === 0 && <span className="muted">אין שלוחות משויכות.</span>}
+                  </div>
+                </div>
+              )}
+              <div className="form-actions">
+                <button type="button" className="refresh-button" onClick={() => setIsUpdateFormOpen(false)}>
+                  סגור טופס
+                </button>
+                <button type="submit" className="submit-button" disabled={!selectedUser || loading}>שמור שינויים</button>
               </div>
-            </div>
+            </form>
           )}
-          <button type="submit" className="submit-button" disabled={!selectedUser || loading}>שמור שינויים</button>
-        </form>
+        </div>
       </div>
     </div>
   );
