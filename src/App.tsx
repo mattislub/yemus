@@ -159,6 +159,13 @@ function App() {
     } catch (error) {
       setBranchStatus('error');
       setBranchMessage((error as Error).message);
+      console.error('שגיאה בעת טעינת קבצי השלוחה', {
+        message: (error as Error).message,
+        systemNumber: branchConfig.systemNumber,
+        branchPath,
+        baseUrl,
+        details: error
+      });
       if (!branchItems.length) {
         setBranchItems(SAMPLE_ITEMS);
       }

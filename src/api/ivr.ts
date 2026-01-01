@@ -98,21 +98,42 @@ export const fetchBranchContents = async (request: BranchRequest): Promise<Branc
   const baseUrl = sanitizeBaseUrl(request.baseUrl ?? DEFAULT_BASE_URL);
   const url = `${baseUrl}/ivr/branch`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      system: systemNumber,
-      password,
-      path: branchPath
-    }),
-    signal
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        system: systemNumber,
+        password,
+        path: branchPath
+      }),
+      signal
+    });
+  } catch (error) {
+    console.error('שגיאת רשת בעת קריאה ל-API של ימות המשיח', {
+      url,
+      baseUrl,
+      systemNumber,
+      branchPath,
+      error
+    });
+    throw error;
+  }
 
   if (!response.ok) {
     const message = await response.text().catch(() => '');
+    console.error('ה-API של ימות המשיח החזיר תגובה שגויה', {
+      status: response.status,
+      statusText: response.statusText,
+      url,
+      baseUrl,
+      systemNumber,
+      branchPath,
+      body: message || '(ללא גוף תגובה)'
+    });
     throw new Error(`הקריאה נכשלה (${response.status}). ${message}`.trim());
   }
 
