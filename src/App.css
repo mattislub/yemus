@@ -410,3 +410,34 @@
   border-radius: 999px;
   font-weight: 700;
 }
+
+.extensions-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.extensions-field-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.extensions-field-row input {
+  flex: 1;
+}
+
+.add-extension-button {
+  align-self: flex-start;
+}
+
+.remove-extension {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.helper-text {
+  margin: 0;
+  font-size: 13px;
+}
