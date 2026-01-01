@@ -26,9 +26,9 @@ const serverState: { users: ServerUser[] } = {
   users: [
     {
       id: 'manager-1',
-      username: 'מנהל ראשי',
+      username: 'פנחס',
       role: 'manager',
-      password: 'changeMe123!',
+      password: '613613',
       updatedAt: new Date().toISOString(),
     },
     {
