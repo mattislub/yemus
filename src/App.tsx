@@ -13,13 +13,65 @@ type LoginCardProps = {
   onSuccess: (user: ManagedUser) => void;
 };
 
-const parseExtensions = (raw: string): string[] =>
-  raw
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+const normalizeExtensions = (extensions: string[]): string[] =>
+  extensions.map((value) => value.trim()).filter(Boolean);
 
-const formatExtensions = (extensions: string[]): string => extensions.join(', ');
+const ensureExtensionFields = (extensions: string[]): string[] => (extensions.length ? extensions : ['']);
+
+type ExtensionsFieldsetProps = {
+  values: string[];
+  onChange: (next: string[]) => void;
+  disabled?: boolean;
+  helper?: string;
+};
+
+function ExtensionsFieldset({ values, onChange, disabled, helper }: ExtensionsFieldsetProps) {
+  const handleChange = (index: number, value: string) => {
+    const next = [...values];
+    next[index] = value;
+    onChange(next);
+  };
+
+  const handleRemove = (index: number) => {
+    const next = values.filter((_, currentIndex) => currentIndex !== index);
+    onChange(ensureExtensionFields(next));
+  };
+
+  const handleAdd = () => {
+    onChange([...values, '']);
+  };
+
+  return (
+    <div className="field">
+      <span>שלוחות במערכת</span>
+      {helper && <p className="muted helper-text">{helper}</p>}
+      <div className="extensions-fields">
+        {values.map((extension, index) => (
+          <div key={index} className="extensions-field-row">
+            <input
+              type="text"
+              value={extension}
+              onChange={(event) => handleChange(index, event.target.value)}
+              placeholder={`שלוחה ${index + 1}`}
+              disabled={disabled}
+            />
+            <button
+              type="button"
+              className="ghost-button remove-extension"
+              onClick={() => handleRemove(index)}
+              disabled={disabled || values.length === 1}
+            >
+              הסר
+            </button>
+          </div>
+        ))}
+        <button type="button" className="refresh-button add-extension-button" onClick={handleAdd} disabled={disabled}>
+          הוסף שלוחה
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function LoginCard({ onSuccess }: LoginCardProps) {
   const [username, setUsername] = useState('');
@@ -93,14 +145,14 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
     role: 'user' as Role,
     systemNumber: '',
     systemPassword: '',
-    extensionsText: '',
+    extensions: [''],
   });
   const [updateForm, setUpdateForm] = useState({
     password: '',
     role: 'user' as Role,
     systemNumber: '',
     systemPassword: '',
-    extensionsText: '',
+    extensions: [''],
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -117,7 +169,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       role: record.role,
       systemNumber: record.systemNumber,
       systemPassword: record.systemPassword,
-      extensionsText: formatExtensions(record.extensions),
+      extensions: ensureExtensionFields(record.extensions),
     });
   };
 
@@ -152,6 +204,12 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       return;
     }
 
+    const sanitizedExtensions = normalizeExtensions(createForm.extensions);
+    if (sanitizedExtensions.length === 0) {
+      setError('הוסיפו לפחות שלוחה אחת לפני שמירה.');
+      return;
+    }
+
     try {
       const created = await createUser({
         username: createForm.username,
@@ -159,7 +217,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
         role: createForm.role,
         systemNumber: createForm.systemNumber,
         systemPassword: createForm.systemPassword,
-        extensions: parseExtensions(createForm.extensionsText),
+        extensions: sanitizedExtensions,
       });
       setUsers((previous) => [...previous, created]);
       setSuccess(`המשתמש ${createForm.username} נוצר ונשמר בשרת.`);
@@ -169,7 +227,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
         role: 'user',
         systemNumber: '',
         systemPassword: '',
-        extensionsText: '',
+        extensions: [''],
       });
       setSelectedUserId(created.id);
       applyUserToUpdateForm(created);
@@ -200,13 +258,19 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
       return;
     }
 
+    const sanitizedExtensions = normalizeExtensions(updateForm.extensions);
+    if (sanitizedExtensions.length === 0) {
+      setError('הוסיפו לפחות שלוחה אחת לפני שמירה.');
+      return;
+    }
+
     try {
       const updated = await updateUser(selectedUserId, {
         role: updateForm.role,
         password: updateForm.password || undefined,
         systemNumber: updateForm.systemNumber,
         systemPassword: updateForm.systemPassword,
-        extensions: parseExtensions(updateForm.extensionsText),
+        extensions: sanitizedExtensions,
       });
       setUsers((previous) => previous.map((user) => (user.id === updated.id ? updated : user)));
       setSuccess('פרטי המשתמש נשמרו בשרת.');
@@ -301,16 +365,11 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
               <option value="manager">מנהל</option>
             </select>
           </label>
-          <label className="field">
-            <span>שלוחות במערכת</span>
-            <textarea
-              value={createForm.extensionsText}
-              onChange={(event) => setCreateForm((prev) => ({ ...prev, extensionsText: event.target.value }))}
-              placeholder="הפרד בין שלוחות בפסיקים, לדוגמה: 1,2,10"
-              rows={3}
-              required
-            />
-          </label>
+          <ExtensionsFieldset
+            values={createForm.extensions}
+            onChange={(extensions) => setCreateForm((prev) => ({ ...prev, extensions }))}
+            helper="כל שלוחה מוזנת בשדה נפרד. הוסיפו או הסירו שורות לפי הצורך."
+          />
           <button type="submit" className="submit-button" disabled={loading}>שמור בשרת</button>
         </form>
 
@@ -444,17 +503,12 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
                   disabled={!selectedUser}
                 />
               </label>
-              <label className="field">
-                <span>שלוחות במערכת</span>
-                <textarea
-                  value={updateForm.extensionsText}
-                  onChange={(event) => setUpdateForm((prev) => ({ ...prev, extensionsText: event.target.value }))}
-                  placeholder="הפרד בין שלוחות בפסיקים, לדוגמה: 1,2,10"
-                  rows={3}
-                  disabled={!selectedUser}
-                  required
-                />
-              </label>
+              <ExtensionsFieldset
+                values={updateForm.extensions}
+                onChange={(extensions) => setUpdateForm((prev) => ({ ...prev, extensions }))}
+                disabled={!selectedUser}
+                helper="לכל שלוחה שדה ייעודי. ניתן להסיר או להוסיף שלוחות לפי הצורך."
+              />
               {selectedUser && (
                 <div className="extensions-row">
                   <span className="muted">שלוחות נוכחיות:</span>
