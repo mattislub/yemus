@@ -309,7 +309,7 @@ function DirectoryResults({
 function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspectorProps) {
   const [systemNumber, setSystemNumber] = useState(selectedUser?.systemNumber ?? '');
   const [token, setToken] = useState(generatedToken ?? '');
-  const [path, setPath] = useState(selectedUser?.extensions[0] ?? '1/2');
+  const [path, setPath] = useState(selectedUser?.extensions[0] ?? 'ivr2:/1/2');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<DirectoryInfoResponse | null>(null);
@@ -382,7 +382,7 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
               type="text"
               value={path}
               onChange={(event) => setPath(event.target.value)}
-              placeholder="לדוגמה: 1/2"
+              placeholder="לדוגמה: ivr2:/1/2"
             />
           </label>
         </div>
@@ -390,10 +390,10 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
           <div className="muted">
             <p className="helper-text">
               אפשר להדביק כאן את הטוקן שנוצר בחלק העליון. הבקשה נשלחת אל https://www.call2all.co.il/ym/api עם הפעולה{' '}
-              <code>get_dir_info</code>.
+              <code>GetIVR2Dir</code>.
             </p>
             <p className="helper-text">
-              curl -X POST -d "action=get_dir_info" -d "system={systemNumber || 'SYSTEM'}" -d "token={token || 'TOKEN'}" -d "path={path || '1/2'}"
+              curl "https://www.call2all.co.il/ym/api/GetIVR2Dir?token={token || 'TOKEN'}&path={path || 'ivr2:/1/2'}"
             </p>
           </div>
           <button type="submit" className="refresh-button primary-action" disabled={loading}>

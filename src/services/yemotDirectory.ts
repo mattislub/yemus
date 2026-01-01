@@ -14,12 +14,26 @@ export type DirectoryInfoResponse = {
 };
 
 type RequestParams = {
-  systemNumber: string;
   token: string;
   path: string;
+  systemNumber?: string;
 };
 
 const API_BASE = import.meta.env.VITE_YEMOT_API_BASE_URL ?? 'https://www.call2all.co.il/ym/api';
+
+const formatDirectoryPath = (value: string): string => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return '';
+  }
+
+  if (trimmed.startsWith('ivr2:')) {
+    return trimmed.startsWith('ivr2:/') ? trimmed : `ivr2:/${trimmed.replace(/^ivr2:/, '').replace(/^\/+/, '')}`;
+  }
+
+  return `ivr2:/${trimmed.replace(/^\/+/, '')}`;
+};
 
 const toObject = (value: unknown): Record<string, unknown> => {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -103,19 +117,17 @@ const normalizeDirectoryResponse = (payload: unknown) => {
 };
 
 export async function fetchDirectoryInfo(params: RequestParams): Promise<DirectoryInfoResponse> {
-  const body = new URLSearchParams({
-    action: 'get_dir_info',
-    system: params.systemNumber,
-    token: params.token,
-    path: params.path,
-  });
+  const formattedPath = formatDirectoryPath(params.path);
 
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body,
+  if (!formattedPath) {
+    throw new Error('נתיב שלוחה חסר או לא תקין.');
+  }
+
+  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  const url = `${base}/GetIVR2Dir?${new URLSearchParams({ token: params.token, path: formattedPath }).toString()}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
   });
 
   const text = await response.text();
