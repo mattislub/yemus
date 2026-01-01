@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AuthSession,
   createSystemToken,
@@ -239,6 +239,73 @@ type DirectoryInspectorProps = {
   generatedToken?: string | null;
 };
 
+type DirectoryResultsProps = {
+  result: DirectoryInfoResponse;
+  emptyDirectoriesMessage?: string;
+  emptyFilesMessage?: string;
+};
+
+function DirectoryResults({
+  result,
+  emptyDirectoriesMessage = 'לא נמצאו תתי־שלוחות בנתיב זה.',
+  emptyFilesMessage = 'לא נמצאו קבצים בנתיב זה.',
+}: DirectoryResultsProps) {
+  const hasDirectories = (result?.directories?.length ?? 0) > 0;
+  const hasFiles = (result?.files?.length ?? 0) > 0;
+
+  return (
+    <div className="directory-results">
+      <div className="directory-summary">
+        <span className="badge badge-strong">תיקיות: {result.directories.length}</span>
+        <span className="badge">קבצים: {result.files.length}</span>
+      </div>
+      <div className="directory-columns">
+        <div className="directory-column">
+          <h4>תתי־שלוחות</h4>
+          {hasDirectories ? (
+            <div className="directory-list">
+              {result.directories.map((entry) => (
+                <div key={`${entry.path}-${entry.name}`} className="directory-entry">
+                  <div className="directory-entry-main">
+                    <p className="row-title">{entry.name}</p>
+                    <p className="row-subtitle">{entry.path}</p>
+                  </div>
+                  <span className="badge badge-strong">תיקייה</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">{emptyDirectoriesMessage}</p>
+          )}
+        </div>
+        <div className="directory-column">
+          <h4>קבצים</h4>
+          {hasFiles ? (
+            <div className="directory-list">
+              {result.files.map((entry) => (
+                <div key={`${entry.path}-${entry.name}`} className="directory-entry">
+                  <div className="directory-entry-main">
+                    <p className="row-title">{entry.name}</p>
+                    <p className="row-subtitle">{entry.path}</p>
+                    {entry.size && <span className="muted small-text">גודל: {entry.size} בייט</span>}
+                  </div>
+                  <span className="badge">קובץ</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">{emptyFilesMessage}</p>
+          )}
+        </div>
+      </div>
+      <details className="raw-response">
+        <summary>תצוגת JSON מלאה</summary>
+        <pre>{JSON.stringify(result.raw, null, 2)}</pre>
+      </details>
+    </div>
+  );
+}
+
 function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspectorProps) {
   const [systemNumber, setSystemNumber] = useState(selectedUser?.systemNumber ?? '');
   const [token, setToken] = useState(generatedToken ?? '');
@@ -282,9 +349,6 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
       setLoading(false);
     }
   };
-
-  const hasDirectories = (result?.directories.length ?? 0) > 0;
-  const hasFiles = (result?.files.length ?? 0) > 0;
 
   return (
     <div className="panel panel-wide directory-panel">
@@ -346,54 +410,166 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
         </div>
       )}
       {result && (
-        <div className="directory-results">
-          <div className="directory-summary">
-            <span className="badge badge-strong">תיקיות: {result.directories.length}</span>
-            <span className="badge">קבצים: {result.files.length}</span>
+        <DirectoryResults
+          result={result}
+          emptyDirectoriesMessage="לא נמצאו תתי־שלוחות בנתיב זה."
+          emptyFilesMessage="לא נמצאו קבצים בנתיב זה."
+        />
+      )}
+    </div>
+  );
+}
+
+type UserDirectoryPageProps = {
+  session: AuthSession;
+  onLogout: () => void;
+};
+
+type ExtensionResult = {
+  extension: string;
+  result: DirectoryInfoResponse | null;
+  error: string | null;
+};
+
+function UserDirectoryPage({ session, onLogout }: UserDirectoryPageProps) {
+  const [token, setToken] = useState<SystemTokenResponse | null>(null);
+  const [tokenError, setTokenError] = useState('');
+  const [tokenStatus, setTokenStatus] = useState('');
+  const [extensionResults, setExtensionResults] = useState<ExtensionResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  const userExtensions = useMemo(
+    () => session.user.extensions.map((value) => value.trim()).filter(Boolean),
+    [session.user.extensions],
+  );
+  const hasExtensions = userExtensions.length > 0;
+
+  const fetchDirectories = useCallback(async () => {
+    if (!hasExtensions) {
+      setTokenError('אין שלוחות מוגדרות עבור חשבון זה.');
+      setExtensionResults([]);
+      setToken(null);
+      return;
+    }
+
+    setLoading(true);
+    setTokenError('');
+    setTokenStatus('');
+
+    try {
+      const generated = await createSystemToken(session.user.id, session.token);
+      setToken(generated);
+      setTokenStatus('נוצר טוקן חדש עבור המערכת שלך והשלוחות נטענו.');
+
+      const responses = await Promise.all(
+        userExtensions.map(async (extension) => {
+          try {
+            const result = await fetchDirectoryInfo({
+              systemNumber: session.user.systemNumber,
+              token: generated.token,
+              path: extension,
+            });
+            return { extension, result, error: null };
+          } catch (error) {
+            return {
+              extension,
+              result: null,
+              error: error instanceof Error ? error.message : 'שגיאה בשליפת הנתונים מהשלוחה.',
+            };
+          }
+        }),
+      );
+
+      setExtensionResults(responses);
+      setLastUpdated(new Date().toLocaleString());
+    } catch (error) {
+      setToken(null);
+      setExtensionResults([]);
+      setTokenError(error instanceof Error ? error.message : 'קבלת טוקן מהמנהל נכשלה.');
+    } finally {
+      setLoading(false);
+    }
+  }, [hasExtensions, session.token, session.user.id, session.user.systemNumber, userExtensions]);
+
+  useEffect(() => {
+    fetchDirectories();
+  }, [fetchDirectories]);
+
+  return (
+    <div className="admin-card">
+      <div className="admin-header">
+        <div>
+          <p className="eyebrow">צפייה בקבצים האישיים</p>
+          <h1 className="title">קבצים במערכת שלי</h1>
+          <p className="subtitle">משתמש עם הרשאות רגילות יכול לראות את הקבצים שהגדיר המנהל לפי שלוחות במערכת.</p>
+        </div>
+        <div className="admin-actions">
+          <p className="muted">
+            משתמש מחובר: {session.user.username} ({session.user.systemNumber})
+          </p>
+          <div className="admin-buttons">
+            <button className="refresh-button" type="button" onClick={fetchDirectories} disabled={loading}>
+              {loading ? 'טוען נתונים...' : 'רענן נתונים'}
+            </button>
+            <button className="refresh-button logout-button" type="button" onClick={onLogout}>
+              התנתק
+            </button>
           </div>
-          <div className="directory-columns">
-            <div className="directory-column">
-              <h4>תתי־שלוחות</h4>
-              {hasDirectories ? (
-                <div className="directory-list">
-                  {result.directories.map((entry) => (
-                    <div key={`${entry.path}-${entry.name}`} className="directory-entry">
-                      <div className="directory-entry-main">
-                        <p className="row-title">{entry.name}</p>
-                        <p className="row-subtitle">{entry.path}</p>
-                      </div>
-                      <span className="badge badge-strong">תיקייה</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">לא נמצאו תתי־שלוחות בנתיב זה.</p>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="panel-header">
+          <h2>שלוחות שהוגדרו עבורך</h2>
+          <p>נבצע קריאה ל-Call2All לקבלת טוקן ונציג את הקבצים בכל שלוחה.</p>
+        </div>
+        <div className="user-meta-grid">
+          <div className="muted">מספר מערכת: {session.user.systemNumber || '—'}</div>
+          <div className="muted">שלוחות: {hasExtensions ? userExtensions.join(', ') : 'אין שלוחות מוגדרות.'}</div>
+          {lastUpdated && <div className="muted">עודכן לאחרונה: {lastUpdated}</div>}
+        </div>
+        {(tokenError || tokenStatus) && (
+          <div className={`alert ${tokenError ? 'alert-error' : 'alert-success'}`}>
+            {tokenError || tokenStatus}
+          </div>
+        )}
+        {token && (
+          <div className="token-box">
+            <span className="token-label">טוקן פעיל</span>
+            <code className="token-value">{token.token}</code>
+            <span className="token-expiry">תפוגה: {token.expires ?? 'לא הוחזרה על ידי השירות החיצוני'}</span>
+          </div>
+        )}
+        {!hasExtensions && (
+          <p className="muted">אין שלוחות מוגדרות עבורך. פנה למנהל כדי להוסיף שלוחות ולצפות בקבצים.</p>
+        )}
+      </div>
+
+      {hasExtensions && (
+        <div className="extension-panels">
+          {extensionResults.map((entry) => (
+            <div key={entry.extension} className="panel panel-wide">
+              <div className="panel-header">
+                <h3>שלוחה {entry.extension}</h3>
+                <p>הקבצים והשלוחות שזוהו בנתיב זה.</p>
+              </div>
+              {entry.error && <div className="alert alert-error">{entry.error}</div>}
+              {entry.result && (
+                <DirectoryResults
+                  result={entry.result}
+                  emptyDirectoriesMessage="לא נמצאו תתי־שלוחות בנתיב זה."
+                  emptyFilesMessage="לא נמצאו קבצים בנתיב זה."
+                />
+              )}
+              {!entry.error && !entry.result && (
+                <p className="muted">הנתונים לשלוחה זו עדיין לא נטענו.</p>
               )}
             </div>
-            <div className="directory-column">
-              <h4>קבצים</h4>
-              {hasFiles ? (
-                <div className="directory-list">
-                  {result.files.map((entry) => (
-                    <div key={`${entry.path}-${entry.name}`} className="directory-entry">
-                      <div className="directory-entry-main">
-                        <p className="row-title">{entry.name}</p>
-                        <p className="row-subtitle">{entry.path}</p>
-                        {entry.size && <span className="muted small-text">גודל: {entry.size} בייט</span>}
-                      </div>
-                      <span className="badge">קובץ</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="muted">לא נמצאו קבצים בנתיב זה.</p>
-              )}
-            </div>
-          </div>
-          <details className="raw-response">
-            <summary>תצוגת JSON מלאה</summary>
-            <pre>{JSON.stringify(result.raw, null, 2)}</pre>
-          </details>
+          ))}
+          {extensionResults.length === 0 && hasExtensions && !loading && (
+            <p className="muted">לחץ על רענון כדי לטעון את פרטי השלוחות שלך.</p>
+          )}
         </div>
       )}
     </div>
@@ -891,15 +1067,7 @@ function App() {
         {!session ? (
           <LoginCard onSuccess={setSession} />
         ) : session.user.role !== 'manager' ? (
-          <div className="card">
-            <h1 className="title">אין הרשאה לדף מנהל</h1>
-            <p className="subtitle">
-              התחברות למשתמש מנהל נדרשת כדי לגשת לדף הניהול. אנא התנתק ונסה עם חשבון מתאים.
-            </p>
-            <button type="button" className="submit-button" onClick={handleLogout}>
-              התנתק
-            </button>
-          </div>
+          <UserDirectoryPage session={session} onLogout={handleLogout} />
         ) : (
           <AdminPage session={session} onLogout={handleLogout} />
         )}

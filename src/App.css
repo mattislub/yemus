@@ -507,6 +507,19 @@
   gap: 8px;
 }
 
+.user-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.extension-panels {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 @media (max-width: 960px) {
   .table-head,
   .table-grid-row {

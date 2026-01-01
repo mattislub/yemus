@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs";
+import bcrypt from 'bcrypt';
 import express from 'express';
 import fs from 'fs/promises';
 import jwt from 'jsonwebtoken';
@@ -88,6 +88,11 @@ const optionalAuthenticate = () => (req, _res, next) => {
   const payload = verifyToken(token);
   req.auth = payload || null;
   next();
+};
+
+const canAccessUserResource = (auth, userId) => {
+  if (!auth) return false;
+  return auth.role === 'manager' || auth.sub === userId;
 };
 
 const createSystemToken = async (systemNumber, systemPassword) => {
@@ -271,8 +276,14 @@ app.patch('/api/users/:id', authenticate(true), async (req, res) => {
   }
 });
 
-app.post('/api/users/:id/token', authenticate(true), async (req, res) => {
+app.post('/api/users/:id/token', authenticate(), async (req, res) => {
   const { id } = req.params;
+  const authUser = req.auth;
+
+  if (!canAccessUserResource(authUser, id)) {
+    res.status(authUser ? 403 : 401).json({ message: 'אין הרשאה לבצע פעולה זו.' });
+    return;
+  }
 
   try {
     const users = await readUsers();
