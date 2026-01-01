@@ -2,8 +2,8 @@ import { FormEvent, useState } from 'react';
 import './App.css';
 
 function App() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('פנחס');
+  const [password, setPassword] = useState('613613');
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
