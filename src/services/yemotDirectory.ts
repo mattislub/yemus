@@ -124,7 +124,8 @@ export async function fetchDirectoryInfo(params: RequestParams): Promise<Directo
   }
 
   const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
-  const url = `${base}/GetIVR2Dir?${new URLSearchParams({ token: params.token, path: formattedPath }).toString()}`;
+  const endpoint = base.toLowerCase().endsWith('/getivr2dir') ? base : `${base}/GetIVR2Dir`;
+  const url = `${endpoint}?${new URLSearchParams({ token: params.token, path: formattedPath }).toString()}`;
 
   const response = await fetch(url, {
     method: 'GET',
