@@ -11,6 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const USERS_PATH = path.join(DATA_DIR, 'users.json');
+const LOGIN_ENDPOINT = 'https://www.call2all.co.il/yemotapi';
 
 const hashPassword = (password) => bcrypt.hash(password, 10);
 
@@ -87,6 +88,34 @@ const optionalAuthenticate = () => (req, _res, next) => {
   const payload = verifyToken(token);
   req.auth = payload || null;
   next();
+};
+
+const createSystemToken = async (systemNumber, systemPassword) => {
+  const response = await fetch(LOGIN_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      action: 'login',
+      system: systemNumber,
+      password: systemPassword,
+    }).toString(),
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!payload) {
+    throw new Error('התקבלה תגובה לא תקינה מ-Call2all.');
+  }
+
+  if (!response.ok || payload.response !== 'OK' || !payload.token) {
+    throw new Error(payload.message ?? 'לא ניתן היה ליצור טוקן עם פרטי המערכת שסופקו.');
+  }
+
+  return {
+    token: String(payload.token),
+    expires: payload.expires ? String(payload.expires) : null,
+  };
 };
 
 app.use(express.json());
@@ -239,6 +268,29 @@ app.patch('/api/users/:id', authenticate(true), async (req, res) => {
     res.json(sanitizeUser(updatedRecord));
   } catch (error) {
     res.status(500).json({ message: error instanceof Error ? error.message : 'שגיאת שרת.' });
+  }
+});
+
+app.post('/api/users/:id/token', authenticate(true), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const users = await readUsers();
+    const record = users.find((user) => user.id === id);
+
+    if (!record) {
+      res.status(404).json({ message: 'המשתמש לא נמצא בשרת.' });
+      return;
+    }
+
+    const tokenResponse = await createSystemToken(record.systemNumber, record.systemPassword);
+    res.json({
+      userId: record.id,
+      systemNumber: record.systemNumber,
+      ...tokenResponse,
+    });
+  } catch (error) {
+    res.status(502).json({ message: error instanceof Error ? error.message : 'יצירת טוקן חיצוני נכשלה.' });
   }
 });
 

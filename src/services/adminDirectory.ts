@@ -15,6 +15,13 @@ export type AuthSession = {
   token: string;
 };
 
+export type SystemTokenResponse = {
+  token: string;
+  expires: string | null;
+  userId?: string;
+  systemNumber?: string;
+};
+
 type CreatePayload = {
   username: string;
   password: string;
@@ -94,6 +101,12 @@ export async function updateUser(id: string, updates: UpdatePayload, token: stri
   return request<ManagedUser>(`${API_BASE}/users/${id}`, token, {
     method: 'PATCH',
     body: JSON.stringify(updates),
+  });
+}
+
+export async function createSystemToken(id: string, token: string): Promise<SystemTokenResponse> {
+  return request<SystemTokenResponse>(`${API_BASE}/users/${id}/token`, token, {
+    method: 'POST',
   });
 }
 

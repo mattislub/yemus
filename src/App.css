@@ -206,6 +206,38 @@
   gap: 14px;
 }
 
+.token-box {
+  border: 1px dashed #94a3b8;
+  border-radius: 12px;
+  padding: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  word-break: break-all;
+}
+
+.token-label {
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.token-value {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px;
+  display: inline-block;
+  font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 14px;
+  color: #fff;
+}
+
+.token-expiry {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
 .panel-wide {
   width: 100%;
 }
