@@ -297,12 +297,12 @@ function App() {
         {items.length === 0 && <div className="item-row">לא נטענו פריטים עדיין. התחילו בלחיצה על "בדיקת שלוחה".</div>}
       </div>
 
-      {rawResponse && (
+      {rawResponse != null ? (
         <div>
           <h3>תשובת API (גולמית)</h3>
           <pre className="raw-response">{JSON.stringify(rawResponse, null, 2)}</pre>
         </div>
-      )}
+      ) : null}
 
       <p className="helper">
         טיפ: אם אתם נתקלים בחסימות CORS, הגדירו פרוקסי ב-vite.config או בצעו את הקריאה דרך שרת ביניים.
