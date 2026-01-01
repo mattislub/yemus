@@ -185,6 +185,7 @@ export async function downloadFile({ token, path }: DownloadFileParams): Promise
   const formattedPath = formatDirectoryPath(path);
 
   if (!formattedPath) {
+    console.error('Download aborted: missing or invalid directory path.', { rawPath: path });
     throw new Error('נתיב שלוחה חסר או לא תקין.');
   }
 
@@ -192,12 +193,29 @@ export async function downloadFile({ token, path }: DownloadFileParams): Promise
   const endpoint = base.toLowerCase().endsWith('/getivr2file') ? base : `${base}/GetIVR2File`;
   const url = `${endpoint}?${new URLSearchParams({ token, path: formattedPath }).toString()}`;
 
-  const response = await fetch(url, {
-    method: 'GET',
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+    });
+  } catch (error) {
+    console.error('Download request failed before receiving a response.', {
+      endpoint,
+      path: formattedPath,
+      error,
+    });
+    throw error;
+  }
 
   if (!response.ok) {
     const message = `הורדת הקובץ נכשלה (סטטוס ${response.status}).`;
+    console.error('Download failed with non-OK response.', {
+      endpoint,
+      path: formattedPath,
+      status: response.status,
+      statusText: response.statusText,
+    });
     throw new Error(message);
   }
 
