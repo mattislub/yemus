@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import {
+  AuthSession,
   createUser,
   listUsers,
   ManagedUser,
@@ -10,7 +11,7 @@ import {
 import './App.css';
 
 type LoginCardProps = {
-  onSuccess: (user: ManagedUser) => void;
+  onSuccess: (session: AuthSession) => void;
 };
 
 const normalizeExtensions = (extensions: string[]): string[] =>
@@ -226,11 +227,11 @@ function LoginCard({ onSuccess }: LoginCardProps) {
 }
 
 type AdminPageProps = {
-  user: ManagedUser;
+  session: AuthSession;
   onLogout: () => void;
 };
 
-function AdminPage({ user, onLogout }: AdminPageProps) {
+function AdminPage({ session, onLogout }: AdminPageProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [isUpdateFormOpen, setIsUpdateFormOpen] = useState(false);
@@ -273,7 +274,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
     setLoading(true);
     setError('');
     try {
-      const fromServer = await listUsers();
+      const fromServer = await listUsers(session.token);
       setUsers(fromServer);
       if (!selectedUserId && fromServer.length) {
         setSelectedUserId(fromServer[0].id);
@@ -314,7 +315,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
         systemNumber: createForm.systemNumber,
         systemPassword: createForm.systemPassword,
         extensions: sanitizedExtensions,
-      });
+      }, session.token);
       setUsers((previous) => [...previous, created]);
       setSuccess(`המשתמש ${createForm.username} נוצר ונשמר בשרת.`);
       setCreateForm({
@@ -376,7 +377,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
         systemNumber: updateForm.systemNumber,
         systemPassword: updateForm.systemPassword,
         extensions: sanitizedExtensions,
-      });
+      }, session.token);
       setUsers((previous) => previous.map((user) => (user.id === updated.id ? updated : user)));
       setSuccess('פרטי המשתמש נשמרו בשרת.');
       applyUserToUpdateForm(updated);
@@ -395,7 +396,7 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
         </div>
         <div className="admin-actions">
           <p className="muted">
-            מחובר כ: {user.username} ({user.role === 'manager' ? 'מנהל' : 'משתמש'})
+            מחובר כ: {session.user.username} ({session.user.role === 'manager' ? 'מנהל' : 'משתמש'})
           </p>
           <div className="admin-buttons">
             <button className="refresh-button" type="button" onClick={loadUsers} disabled={loading}>
@@ -637,18 +638,18 @@ function AdminPage({ user, onLogout }: AdminPageProps) {
 }
 
 function App() {
-  const [authenticatedUser, setAuthenticatedUser] = useState<ManagedUser | null>(null);
+  const [session, setSession] = useState<AuthSession | null>(null);
 
   const handleLogout = () => {
-    setAuthenticatedUser(null);
+    setSession(null);
   };
 
   return (
     <div className="page">
       <div className="layout">
-        {!authenticatedUser ? (
-          <LoginCard onSuccess={setAuthenticatedUser} />
-        ) : authenticatedUser.role !== 'manager' ? (
+        {!session ? (
+          <LoginCard onSuccess={setSession} />
+        ) : session.user.role !== 'manager' ? (
           <div className="card">
             <h1 className="title">אין הרשאה לדף מנהל</h1>
             <p className="subtitle">
@@ -659,7 +660,7 @@ function App() {
             </button>
           </div>
         ) : (
-          <AdminPage user={authenticatedUser} onLogout={handleLogout} />
+          <AdminPage session={session} onLogout={handleLogout} />
         )}
       </div>
     </div>

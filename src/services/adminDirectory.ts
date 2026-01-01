@@ -10,6 +10,11 @@ export type ManagedUser = {
   updatedAt: string;
 };
 
+export type AuthSession = {
+  user: ManagedUser;
+  token: string;
+};
+
 type CreatePayload = {
   username: string;
   password: string;
@@ -54,11 +59,12 @@ const parseJson = async (response: Response) => {
   }
 };
 
-const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+const request = async <T>(path: string, token?: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(path, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -73,26 +79,26 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   return payload as T;
 };
 
-export async function listUsers(): Promise<ManagedUser[]> {
-  return request<ManagedUser[]>(`${API_BASE}/users`);
+export async function listUsers(token: string): Promise<ManagedUser[]> {
+  return request<ManagedUser[]>(`${API_BASE}/users`, token);
 }
 
-export async function createUser(payload: CreatePayload): Promise<ManagedUser> {
-  return request<ManagedUser>(`${API_BASE}/users`, {
+export async function createUser(payload: CreatePayload, token: string): Promise<ManagedUser> {
+  return request<ManagedUser>(`${API_BASE}/users`, token, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export async function updateUser(id: string, updates: UpdatePayload): Promise<ManagedUser> {
-  return request<ManagedUser>(`${API_BASE}/users/${id}`, {
+export async function updateUser(id: string, updates: UpdatePayload, token: string): Promise<ManagedUser> {
+  return request<ManagedUser>(`${API_BASE}/users/${id}`, token, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
 }
 
-export async function signIn(username: string, password: string): Promise<ManagedUser> {
-  return request<ManagedUser>(`${API_BASE}/login`, {
+export async function signIn(username: string, password: string): Promise<AuthSession> {
+  return request<AuthSession>(`${API_BASE}/login`, undefined, {
     method: 'POST',
     body: JSON.stringify({ username, password }),
   });
