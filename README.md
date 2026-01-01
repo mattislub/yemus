@@ -22,7 +22,7 @@
 
 ## קובצי תצורה חשובים
 
-- `.env` (אופציונלי): הגדירו בו `VITE_IVR_BASE_URL` אם ברצונכם להחליף את כתובת ה-API ברירת מחדל (`https://www.call2all.co.il/ym/api`).
+- `.env` (אופציונלי): הגדירו בו `VITE_YEMOT_API_BASE_URL` אם ברצונכם להחליף את כתובת ה-API ברירת מחדל (`https://www.call2all.co.il/ym/api`).
 - `public/sample-data/map-export.json`: קובץ לדוגמה להשארת המידע שהיה קיים ברפוזיטורי המקורי.
 
 ## שימוש באפליקציה
