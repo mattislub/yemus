@@ -10,6 +10,7 @@ import {
   SystemTokenResponse,
   updateUser,
 } from './services/adminDirectory';
+import { DirectoryInfoResponse, fetchDirectoryInfo } from './services/yemotDirectory';
 import './App.css';
 
 type LoginCardProps = {
@@ -232,6 +233,172 @@ type AdminPageProps = {
   session: AuthSession;
   onLogout: () => void;
 };
+
+type DirectoryInspectorProps = {
+  selectedUser: ManagedUser | null;
+  generatedToken?: string | null;
+};
+
+function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspectorProps) {
+  const [systemNumber, setSystemNumber] = useState(selectedUser?.systemNumber ?? '');
+  const [token, setToken] = useState(generatedToken ?? '');
+  const [path, setPath] = useState(selectedUser?.extensions[0] ?? '1/2');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<DirectoryInfoResponse | null>(null);
+
+  useEffect(() => {
+    if (selectedUser) {
+      setSystemNumber(selectedUser.systemNumber);
+      if (selectedUser.extensions[0]) {
+        setPath(selectedUser.extensions[0]);
+      }
+    }
+  }, [selectedUser]);
+
+  useEffect(() => {
+    if (generatedToken && !token) {
+      setToken(generatedToken);
+    }
+  }, [generatedToken, token]);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    setResult(null);
+
+    if (!systemNumber || !token || !path) {
+      setError('יש למלא מספר מערכת, טוקן ונתיב שלוחה.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetchDirectoryInfo({ systemNumber, token, path });
+      setResult(response);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'שגיאה בעת שליפת פרטי השלוחה.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const hasDirectories = (result?.directories.length ?? 0) > 0;
+  const hasFiles = (result?.files.length ?? 0) > 0;
+
+  return (
+    <div className="panel panel-wide directory-panel">
+      <div className="panel-header">
+        <h2>הצגת פרטי שלוחה</h2>
+        <p>שליפה מהירה של קבצים ותתי־שלוחות בעזרת הטוקן שהופק למערכת.</p>
+      </div>
+      <form className="form directory-form" onSubmit={handleSubmit}>
+        <div className="directory-grid">
+          <label className="field">
+            <span>מספר מערכת</span>
+            <input
+              type="text"
+              value={systemNumber}
+              onChange={(event) => setSystemNumber(event.target.value)}
+              placeholder="לדוגמה: 1234567"
+            />
+          </label>
+          <label className="field">
+            <span>טוקן פעיל</span>
+            <input
+              type="text"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              placeholder="הדביקו טוקן קיים או שנוצר כעת"
+            />
+          </label>
+          <label className="field">
+            <span>נתיב שלוחה</span>
+            <input
+              type="text"
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              placeholder="לדוגמה: 1/2"
+            />
+          </label>
+        </div>
+        <div className="form-actions">
+          <div className="muted">
+            <p className="helper-text">
+              אפשר להדביק כאן את הטוקן שנוצר בחלק העליון. הבקשה נשלחת אל https://www.call2all.co.il/yemotapi עם הפעולה{' '}
+              <code>get_dir_info</code>.
+            </p>
+            <p className="helper-text">
+              curl -X POST -d "action=get_dir_info" -d "system={systemNumber || 'SYSTEM'}" -d "token={token || 'TOKEN'}" -d "path={path || '1/2'}"
+            </p>
+          </div>
+          <button type="submit" className="refresh-button primary-action" disabled={loading}>
+            {loading ? 'טוען נתונים...' : 'בדיקת שלוחה'}
+          </button>
+        </div>
+      </form>
+      {(error || result) && (
+        <div className={`alert ${error ? 'alert-error' : 'alert-success'}`}>
+          {error ||
+            result?.message ||
+            result?.status ||
+            'הפרטים נטענו בהצלחה. הרשימה למטה מציגה תיקיות וקבצים אם נמצאו.'}
+        </div>
+      )}
+      {result && (
+        <div className="directory-results">
+          <div className="directory-summary">
+            <span className="badge badge-strong">תיקיות: {result.directories.length}</span>
+            <span className="badge">קבצים: {result.files.length}</span>
+          </div>
+          <div className="directory-columns">
+            <div className="directory-column">
+              <h4>תתי־שלוחות</h4>
+              {hasDirectories ? (
+                <div className="directory-list">
+                  {result.directories.map((entry) => (
+                    <div key={`${entry.path}-${entry.name}`} className="directory-entry">
+                      <div className="directory-entry-main">
+                        <p className="row-title">{entry.name}</p>
+                        <p className="row-subtitle">{entry.path}</p>
+                      </div>
+                      <span className="badge badge-strong">תיקייה</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">לא נמצאו תתי־שלוחות בנתיב זה.</p>
+              )}
+            </div>
+            <div className="directory-column">
+              <h4>קבצים</h4>
+              {hasFiles ? (
+                <div className="directory-list">
+                  {result.files.map((entry) => (
+                    <div key={`${entry.path}-${entry.name}`} className="directory-entry">
+                      <div className="directory-entry-main">
+                        <p className="row-title">{entry.name}</p>
+                        <p className="row-subtitle">{entry.path}</p>
+                        {entry.size && <span className="muted small-text">גודל: {entry.size} בייט</span>}
+                      </div>
+                      <span className="badge">קובץ</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted">לא נמצאו קבצים בנתיב זה.</p>
+              )}
+            </div>
+          </div>
+          <details className="raw-response">
+            <summary>תצוגת JSON מלאה</summary>
+            <pre>{JSON.stringify(result.raw, null, 2)}</pre>
+          </details>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function AdminPage({ session, onLogout }: AdminPageProps) {
   const [users, setUsers] = useState<ManagedUser[]>([]);
@@ -509,6 +676,8 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
           </div>
         </div>
       )}
+
+      <DirectoryInspector selectedUser={selectedUser} generatedToken={systemToken?.token} />
 
       <div className="panel panel-wide">
         <div className="panel-header">
