@@ -21,7 +21,7 @@ type RequestParams = {
 
 const API_BASE = import.meta.env.VITE_YEMOT_API_BASE_URL ?? 'https://www.call2all.co.il/ym/api';
 
-const formatDirectoryPath = (value: string): string => {
+export const formatDirectoryPath = (value: string): string => {
   const trimmed = value.trim();
 
   if (!trimmed) {
@@ -156,4 +156,54 @@ export async function fetchDirectoryInfo(params: RequestParams): Promise<Directo
     ...normalized,
     raw: parsed,
   };
+}
+
+const parseFilenameFromContentDisposition = (headerValue: string | null, fallback: string): string => {
+  if (!headerValue) return fallback;
+
+  const match = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(headerValue);
+  const encoded = match?.[1];
+  const plain = match?.[2];
+
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded);
+    } catch (error) {
+      console.warn('Failed to decode filename from header', error);
+    }
+  }
+
+  return plain ?? fallback;
+};
+
+type DownloadFileParams = {
+  token: string;
+  path: string;
+};
+
+export async function downloadFile({ token, path }: DownloadFileParams): Promise<{ blob: Blob; filename: string }> {
+  const formattedPath = formatDirectoryPath(path);
+
+  if (!formattedPath) {
+    throw new Error('נתיב שלוחה חסר או לא תקין.');
+  }
+
+  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
+  const endpoint = base.toLowerCase().endsWith('/getivr2file') ? base : `${base}/GetIVR2File`;
+  const url = `${endpoint}?${new URLSearchParams({ token, path: formattedPath }).toString()}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    const message = `הורדת הקובץ נכשלה (סטטוס ${response.status}).`;
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const fallbackName = formattedPath.split('/').pop() || 'download';
+  const filename = parseFilenameFromContentDisposition(response.headers.get('Content-Disposition'), fallbackName);
+
+  return { blob, filename };
 }

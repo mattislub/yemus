@@ -10,7 +10,7 @@ import {
   SystemTokenResponse,
   updateUser,
 } from './services/adminDirectory';
-import { DirectoryInfoResponse, fetchDirectoryInfo } from './services/yemotDirectory';
+import { DirectoryEntry, DirectoryInfoResponse, downloadFile, fetchDirectoryInfo, formatDirectoryPath } from './services/yemotDirectory';
 import './App.css';
 
 type LoginCardProps = {
@@ -243,12 +243,41 @@ type DirectoryResultsProps = {
   result: DirectoryInfoResponse;
   emptyDirectoriesMessage?: string;
   emptyFilesMessage?: string;
+  basePath?: string;
+  onDownload?: (fullPath: string) => Promise<void> | void;
+};
+
+const triggerBrowserDownload = (blob: Blob, filename: string) => {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+};
+
+const buildEntryPath = (entry: DirectoryEntry, basePath: string | undefined): string => {
+  const formattedBase = formatDirectoryPath(basePath ?? '');
+  const entryPath = entry.path.trim();
+
+  if (entryPath) {
+    return entryPath.startsWith('ivr2:') ? entryPath : formatDirectoryPath(entryPath);
+  }
+
+  if (!formattedBase) return '';
+
+  return formattedBase.endsWith('/') ? `${formattedBase}${entry.name}` : `${formattedBase}/${entry.name}`;
 };
 
 function DirectoryResults({
   result,
   emptyDirectoriesMessage = 'לא נמצאו תתי־שלוחות בנתיב זה.',
   emptyFilesMessage = 'לא נמצאו קבצים בנתיב זה.',
+  basePath,
+  onDownload,
 }: DirectoryResultsProps) {
   const hasDirectories = (result?.directories?.length ?? 0) > 0;
   const hasFiles = (result?.files?.length ?? 0) > 0;
@@ -289,7 +318,18 @@ function DirectoryResults({
                     <p className="row-subtitle">{entry.path}</p>
                     {entry.size && <span className="muted small-text">גודל: {entry.size} בייט</span>}
                   </div>
-                  <span className="badge">קובץ</span>
+                  <div className="directory-entry-actions">
+                    <span className="badge">קובץ</span>
+                    {onDownload && (
+                      <button
+                        type="button"
+                        className="ghost-button download-button"
+                        onClick={() => onDownload(buildEntryPath(entry, basePath))}
+                      >
+                        הורד
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -313,6 +353,7 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<DirectoryInfoResponse | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState('');
 
   useEffect(() => {
     if (selectedUser) {
@@ -333,6 +374,7 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
     event.preventDefault();
     setError('');
     setResult(null);
+    setDownloadStatus('');
 
     if (!systemNumber || !token || !path) {
       setError('יש למלא מספר מערכת, טוקן ונתיב שלוחה.');
@@ -347,6 +389,24 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
       setError(err instanceof Error ? err.message : 'שגיאה בעת שליפת פרטי השלוחה.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = async (fullPath: string) => {
+    setError('');
+    setDownloadStatus('');
+
+    if (!fullPath) {
+      setError('לא ניתן להוריד קובץ ללא נתיב מלא.');
+      return;
+    }
+
+    try {
+      const { blob, filename } = await downloadFile({ token, path: fullPath });
+      triggerBrowserDownload(blob, filename);
+      setDownloadStatus(`הקובץ הורד בהצלחה (${filename}).`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'הורדת הקובץ נכשלה.');
     }
   };
 
@@ -409,11 +469,14 @@ function DirectoryInspector({ selectedUser, generatedToken }: DirectoryInspector
             'הפרטים נטענו בהצלחה. הרשימה למטה מציגה תיקיות וקבצים אם נמצאו.'}
         </div>
       )}
+      {downloadStatus && <div className="alert alert-success">{downloadStatus}</div>}
       {result && (
         <DirectoryResults
           result={result}
           emptyDirectoriesMessage="לא נמצאו תתי־שלוחות בנתיב זה."
           emptyFilesMessage="לא נמצאו קבצים בנתיב זה."
+          basePath={path}
+          onDownload={handleDownload}
         />
       )}
     </div>
@@ -438,6 +501,8 @@ function UserDirectoryPage({ session, onLogout }: UserDirectoryPageProps) {
   const [extensionResults, setExtensionResults] = useState<ExtensionResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [downloadStatuses, setDownloadStatuses] = useState<Record<string, string>>({});
+  const [downloadErrors, setDownloadErrors] = useState<Record<string, string>>({});
 
   const userExtensions = useMemo(
     () => session.user.extensions.map((value) => value.trim()).filter(Boolean),
@@ -495,6 +560,28 @@ function UserDirectoryPage({ session, onLogout }: UserDirectoryPageProps) {
   useEffect(() => {
     fetchDirectories();
   }, [fetchDirectories]);
+
+  const handleDownload = async (extension: string, fullPath: string) => {
+    if (!token) {
+      setTokenError('נדרש טוקן תקף כדי להוריד קבצים.');
+      return;
+    }
+
+    setDownloadErrors((prev) => ({ ...prev, [extension]: '' }));
+    setDownloadStatuses((prev) => ({ ...prev, [extension]: 'מוריד קובץ...' }));
+
+    try {
+      const { blob, filename } = await downloadFile({ token: token.token, path: fullPath });
+      triggerBrowserDownload(blob, filename);
+      setDownloadStatuses((prev) => ({ ...prev, [extension]: `הקובץ הורד (${filename}).` }));
+    } catch (error) {
+      setDownloadErrors((prev) => ({
+        ...prev,
+        [extension]: error instanceof Error ? error.message : 'הורדת הקובץ נכשלה.',
+      }));
+      setDownloadStatuses((prev) => ({ ...prev, [extension]: '' }));
+    }
+  };
 
   return (
     <div className="admin-card">
@@ -555,11 +642,17 @@ function UserDirectoryPage({ session, onLogout }: UserDirectoryPageProps) {
                 <p>הקבצים והשלוחות שזוהו בנתיב זה.</p>
               </div>
               {entry.error && <div className="alert alert-error">{entry.error}</div>}
+              {downloadErrors[entry.extension] && <div className="alert alert-error">{downloadErrors[entry.extension]}</div>}
+              {downloadStatuses[entry.extension] && !downloadErrors[entry.extension] && (
+                <div className="alert alert-success">{downloadStatuses[entry.extension]}</div>
+              )}
               {entry.result && (
                 <DirectoryResults
                   result={entry.result}
                   emptyDirectoriesMessage="לא נמצאו תתי־שלוחות בנתיב זה."
                   emptyFilesMessage="לא נמצאו קבצים בנתיב זה."
+                  basePath={entry.extension}
+                  onDownload={(fullPath) => handleDownload(entry.extension, fullPath)}
                 />
               )}
               {!entry.error && !entry.result && (
