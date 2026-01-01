@@ -21,6 +21,13 @@ type RequestParams = {
 
 const API_BASE = import.meta.env.VITE_YEMOT_API_BASE_URL ?? 'https://www.call2all.co.il/ym/api';
 
+const normalizeBaseApiUrl = (value: string): string => {
+  const withoutTrailingSlash = value.replace(/\/+$/, '');
+  const strippedEndpoint = withoutTrailingSlash.replace(/\/getivr2(?:dir|file)$/i, '');
+
+  return strippedEndpoint || withoutTrailingSlash;
+};
+
 export const formatDirectoryPath = (value: string): string => {
   const trimmed = value.trim();
 
@@ -123,8 +130,8 @@ export async function fetchDirectoryInfo(params: RequestParams): Promise<Directo
     throw new Error('נתיב שלוחה חסר או לא תקין.');
   }
 
-  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
-  const endpoint = base.toLowerCase().endsWith('/getivr2dir') ? base : `${base}/GetIVR2Dir`;
+  const base = normalizeBaseApiUrl(API_BASE);
+  const endpoint = `${base}/GetIVR2Dir`;
   const url = `${endpoint}?${new URLSearchParams({ token: params.token, path: formattedPath }).toString()}`;
 
   const response = await fetch(url, {
@@ -189,8 +196,8 @@ export async function downloadFile({ token, path }: DownloadFileParams): Promise
     throw new Error('נתיב שלוחה חסר או לא תקין.');
   }
 
-  const base = API_BASE.endsWith('/') ? API_BASE.slice(0, -1) : API_BASE;
-  const endpoint = base.toLowerCase().endsWith('/getivr2file') ? base : `${base}/GetIVR2File`;
+  const base = normalizeBaseApiUrl(API_BASE);
+  const endpoint = `${base}/GetIVR2File`;
   const url = `${endpoint}?${new URLSearchParams({ token, path: formattedPath }).toString()}`;
 
   let response: Response;
