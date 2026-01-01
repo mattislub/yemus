@@ -13,6 +13,11 @@ type LoginCardProps = {
   onSuccess: (user: ManagedUser) => void;
 };
 
+const demoCredentials = {
+  username: 'פנחס',
+  password: '613613',
+};
+
 const normalizeExtensions = (extensions: string[]): string[] =>
   extensions.map((value) => value.trim()).filter(Boolean);
 
@@ -195,6 +200,12 @@ function LoginCard({ onSuccess }: LoginCardProps) {
       <p className="subtitle" style={{ textAlign: 'center' }}>
         התחברות רגילה נדרשת לפני גישה לדף המנהל.
       </p>
+      <div className="alert alert-success" style={{ textAlign: 'center' }}>
+        <p style={{ margin: 0 }}>
+          ניתן להתחבר עם משתמש הדגמה: <strong>{demoCredentials.username}</strong> /{' '}
+          <strong>{demoCredentials.password}</strong>
+        </p>
+      </div>
       <form className="form" onSubmit={handleSubmit}>
         <label className="field">
           <span>שם משתמש</span>
