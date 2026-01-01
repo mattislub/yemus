@@ -309,12 +309,24 @@
   justify-content: space-between;
   gap: 10px;
   background: linear-gradient(135deg, rgba(226, 232, 240, 0.2), #fff);
+  align-items: center;
 }
 
 .directory-entry-main {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.directory-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.download-button {
+  padding: 6px 10px;
+  border-radius: 10px;
 }
 
 .raw-response {
