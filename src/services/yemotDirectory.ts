@@ -23,7 +23,7 @@ const API_BASE = import.meta.env.VITE_YEMOT_API_BASE_URL ?? 'https://www.call2al
 
 const normalizeBaseApiUrl = (value: string): string => {
   const withoutTrailingSlash = value.replace(/\/+$/, '');
-  const strippedEndpoint = withoutTrailingSlash.replace(/\/getivr2(?:dir|file)$/i, '');
+  const strippedEndpoint = withoutTrailingSlash.replace(/\/(?:getivr2(?:dir|file)|downloadfile)$/i, '');
 
   return strippedEndpoint || withoutTrailingSlash;
 };
@@ -197,7 +197,7 @@ export async function downloadFile({ token, path }: DownloadFileParams): Promise
   }
 
   const base = normalizeBaseApiUrl(API_BASE);
-  const endpoint = `${base}/GetIVR2File`;
+  const endpoint = `${base}/DownloadFile`;
   const requestQuery = { token, path: formattedPath } as const;
   const url = `${endpoint}?${new URLSearchParams(requestQuery).toString()}`;
 
