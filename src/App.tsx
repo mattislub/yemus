@@ -3,6 +3,7 @@ import {
   AuthSession,
   createSystemToken,
   createUser,
+  deleteUser,
   listUsers,
   ManagedUser,
   Role,
@@ -697,13 +698,14 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
     systemPassword: '',
     extensions: [''],
   });
-  const [updateForm, setUpdateForm] = useState({
+  const getDefaultUpdateForm = () => ({
     password: '',
     role: 'user' as Role,
     systemNumber: '',
     systemPassword: '',
     extensions: [''],
   });
+  const [updateForm, setUpdateForm] = useState(getDefaultUpdateForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -733,6 +735,8 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
       extensions: ensureExtensionFields(record.extensions),
     });
   };
+
+  const resetUpdateForm = () => setUpdateForm(getDefaultUpdateForm());
 
   const loadUsers = async () => {
     setLoading(true);
@@ -846,6 +850,38 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
       applyUserToUpdateForm(updated);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'עדכון משתמש נכשל.');
+    }
+  };
+
+  const handleDeleteUser = async (record: ManagedUser) => {
+    const confirmed = window.confirm(`האם למחוק את המשתמש ${record.username}? הפעולה אינה הפיכה.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await deleteUser(record.id, session.token);
+      setUsers((previous) => {
+        const next = previous.filter((user) => user.id !== record.id);
+        if (selectedUserId === record.id) {
+          const nextSelected = next[0] ?? null;
+          setSelectedUserId(nextSelected?.id ?? null);
+          if (nextSelected) {
+            applyUserToUpdateForm(nextSelected);
+          } else {
+            resetUpdateForm();
+          }
+          resetTokenState();
+          setIsUpdateFormOpen(false);
+        }
+        return next;
+      });
+      setSuccess(`המשתמש ${record.username} הוסר מהשרת.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'מחיקת משתמש נכשלה.');
     }
   };
 
@@ -1025,6 +1061,16 @@ function AdminPage({ session, onLogout }: AdminPageProps) {
                     }}
                   >
                     ערוך
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost-button danger-button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteUser(user);
+                    }}
+                  >
+                    מחק
                   </button>
                 </div>
               </div>

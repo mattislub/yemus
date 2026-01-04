@@ -283,6 +283,26 @@ app.patch('/api/users/:id', authenticate(true), async (req, res) => {
   }
 });
 
+app.delete('/api/users/:id', authenticate(true), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const users = await readUsers();
+    const index = users.findIndex((user) => user.id === id);
+
+    if (index === -1) {
+      res.status(404).json({ message: 'המשתמש לא נמצא בשרת.' });
+      return;
+    }
+
+    const [removed] = users.splice(index, 1);
+    await writeUsers(users);
+    res.json(sanitizeUser(removed));
+  } catch (error) {
+    res.status(500).json({ message: error instanceof Error ? error.message : 'שגיאת שרת.' });
+  }
+});
+
 app.post('/api/users/:id/token', authenticate(), async (req, res) => {
   const { id } = req.params;
   const authUser = req.auth;

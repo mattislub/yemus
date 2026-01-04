@@ -116,3 +116,9 @@ export async function signIn(username: string, password: string): Promise<AuthSe
     body: JSON.stringify({ username, password }),
   });
 }
+
+export async function deleteUser(id: string, token: string): Promise<ManagedUser> {
+  return request<ManagedUser>(`${API_BASE}/users/${id}`, token, {
+    method: 'DELETE',
+  });
+}
