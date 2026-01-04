@@ -451,6 +451,7 @@
 .cell-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
 }
 
 .ghost-button {
@@ -465,6 +466,16 @@
 
 .ghost-button:hover {
   background: #f1f5f9;
+}
+
+.danger-button {
+  border-color: #fecdd3;
+  color: #b91c1c;
+  background: #fff1f2;
+}
+
+.danger-button:hover {
+  background: #ffe4e6;
 }
 
 .table-meta {
